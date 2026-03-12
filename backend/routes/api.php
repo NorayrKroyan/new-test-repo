@@ -38,6 +38,7 @@ Route::prefix('carrier')->group(function () {
         Route::get('/me', [CarrierAuthController::class, 'me']);
         Route::get('/dashboard', [CarrierAuthController::class, 'dashboard']);
         Route::put('/profile', [CarrierAuthController::class, 'updateProfile']);
+        Route::post('/change-password', [CarrierAuthController::class, 'changePassword']);
     });
 });
 
@@ -50,5 +51,6 @@ Route::prefix('customer')->group(function () {
         Route::get('/me', [CustomerAuthController::class, 'me']);
         Route::get('/dashboard', [CustomerAuthController::class, 'dashboard']);
         Route::put('/profile', [CustomerAuthController::class, 'updateProfile']);
+        Route::post('/change-password', [CustomerAuthController::class, 'changePassword']);
     });
 });

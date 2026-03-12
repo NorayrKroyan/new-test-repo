@@ -9,15 +9,18 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class CustomerController extends Controller
 {
+    private const DEFAULT_TEMP_PASSWORD = 'ChangeMe123!';
+
     public function index(Request $request)
     {
         $q = trim((string) $request->query('q', ''));
 
         $rows = Customer::query()
-            ->with('user:id,name,email,role,is_active')
+            ->with('user:id,name,email,role,is_active,must_change_password')
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(function ($sub) use ($q) {
                     $sub->where('company_name', 'like', "%{$q}%")
@@ -50,14 +53,17 @@ class CustomerController extends Controller
         ]);
 
         $status = $data['status'] ?? 'pending_review';
+        $plainPassword = $data['password'] ?? self::DEFAULT_TEMP_PASSWORD;
+        $mustChangePassword = empty($data['password']);
 
-        $row = DB::transaction(function () use ($data, $status) {
+        $row = DB::transaction(function () use ($data, $status, $plainPassword, $mustChangePassword) {
             $user = User::create([
                 'name' => $data['contact_name'],
                 'email' => $data['email'],
-                'password' => Hash::make($data['password'] ?? 'ChangeMe123!'),
+                'password' => Hash::make($plainPassword),
                 'role' => 'customer',
                 'is_active' => $status === 'active',
+                'must_change_password' => $mustChangePassword,
             ]);
 
             return Customer::create([
@@ -74,12 +80,12 @@ class CustomerController extends Controller
             ]);
         });
 
-        return response()->json($row->load('user:id,name,email,role,is_active'), 201);
+        return response()->json($row->load('user:id,name,email,role,is_active,must_change_password'), 201);
     }
 
     public function show(Customer $customer)
     {
-        return response()->json($customer->load('user:id,name,email,role,is_active'));
+        return response()->json($customer->load('user:id,name,email,role,is_active,must_change_password'));
     }
 
     public function update(Request $request, Customer $customer)
@@ -99,33 +105,55 @@ class CustomerController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
-        DB::transaction(function () use ($customer, $user, $data) {
+        $row = DB::transaction(function () use ($customer, $user, $data) {
+            $nextStatus = $data['status'] ?? $customer->status;
+            $nextName = $data['contact_name'];
+            $nextEmail = $data['email'];
+
             if ($user) {
-                $user->name = $data['contact_name'];
-                $user->email = $data['email'];
-                $user->is_active = ($data['status'] ?? $customer->status) === 'active';
+                $user->name = $nextName;
+                $user->email = $nextEmail;
+                $user->role = 'customer';
+                $user->is_active = $nextStatus === 'active';
 
                 if (!empty($data['password'])) {
                     $user->password = Hash::make($data['password']);
+                    $user->must_change_password = false;
                 }
 
                 $user->save();
+            } else {
+                if ($nextStatus === 'active') {
+                    $createdUser = User::create([
+                        'name' => $nextName,
+                        'email' => $nextEmail,
+                        'password' => Hash::make(self::DEFAULT_TEMP_PASSWORD),
+                        'role' => 'customer',
+                        'is_active' => true,
+                        'must_change_password' => true,
+                    ]);
+
+                    $customer->user()->associate($createdUser);
+                    $customer->save();
+                }
             }
 
             $customer->update([
                 'company_name' => $data['company_name'] ?? null,
-                'contact_name' => $data['contact_name'],
-                'email' => $data['email'],
+                'contact_name' => $nextName,
+                'email' => $nextEmail,
                 'phone' => $data['phone'] ?? null,
                 'address' => $data['address'] ?? null,
                 'city' => $data['city'] ?? null,
                 'state' => $data['state'] ?? null,
-                'status' => $data['status'] ?? $customer->status,
+                'status' => $nextStatus,
                 'notes' => $data['notes'] ?? null,
             ]);
+
+            return $customer->fresh()->load('user:id,name,email,role,is_active,must_change_password');
         });
 
-        return response()->json($customer->fresh()->load('user:id,name,email,role,is_active'));
+        return response()->json($row);
     }
 
     public function destroy(Customer $customer)

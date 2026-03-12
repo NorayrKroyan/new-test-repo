@@ -21,7 +21,7 @@ class AuthController extends Controller
             'company_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8'],
-            'phone' => ['nullable', 'string', 'max:50'],
+            'phone' => ['nullable', 'string'],
             'address' => ['nullable', 'string'],
             'city' => ['nullable', 'string', 'max:255'],
             'state' => ['nullable', 'string', 'max:255'],
@@ -34,6 +34,7 @@ class AuthController extends Controller
                 'password' => Hash::make($data['password']),
                 'role' => 'customer',
                 'is_active' => false,
+                'must_change_password' => false,
             ]);
 
             $customer = Customer::create([
@@ -183,6 +184,39 @@ class AuthController extends Controller
             'ok' => true,
             'user' => $user->fresh(),
             'customer' => $user->customerProfile()->first(),
+        ]);
+    }
+
+    public function changePassword(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || !$user->customerProfile) {
+            return response()->json([
+                'message' => 'Unauthorized',
+            ], 401);
+        }
+
+        $data = $request->validate([
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        if (!Hash::check($data['current_password'], $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => ['Current password is incorrect.'],
+            ]);
+        }
+
+        $user->update([
+            'password' => Hash::make($data['password']),
+            'must_change_password' => false,
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'user' => $user->fresh(),
+            'customer' => $user->customerProfile,
         ]);
     }
 

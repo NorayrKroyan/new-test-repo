@@ -39,6 +39,7 @@ class AuthController extends Controller
                 'password' => Hash::make($data['password']),
                 'role' => 'carrier',
                 'is_active' => false,
+                'must_change_password' => false,
             ]);
 
             $carrier = Carrier::create([
@@ -191,6 +192,39 @@ class AuthController extends Controller
             'ok' => true,
             'user' => $user->fresh(),
             'carrier' => $user->carrierProfile()->first(),
+        ]);
+    }
+
+    public function changePassword(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || !$user->carrierProfile) {
+            return response()->json([
+                'message' => 'Unauthorized',
+            ], 401);
+        }
+
+        $data = $request->validate([
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        if (!Hash::check($data['current_password'], $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => ['Current password is incorrect.'],
+            ]);
+        }
+
+        $user->update([
+            'password' => Hash::make($data['password']),
+            'must_change_password' => false,
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'user' => $user->fresh(),
+            'carrier' => $user->carrierProfile,
         ]);
     }
 

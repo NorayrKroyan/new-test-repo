@@ -4,12 +4,17 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Carrier;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class CarrierController extends Controller
 {
+    private const DEFAULT_TEMP_PASSWORD = 'ChangeMe123!';
+
     public function index(Request $request)
     {
         $q = trim((string) $request->query('q', ''));
@@ -55,22 +60,23 @@ class CarrierController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
-        $row = Carrier::create([
-            ...$data,
-            'status' => $data['status'] ?? 'pending_review',
-        ]);
+        $row = DB::transaction(function () use ($data) {
+            $carrier = Carrier::create([
+                ...$data,
+                'status' => $data['status'] ?? 'pending_review',
+            ]);
 
-        if ($row->user) {
-            $row->user->is_active = $row->status === 'active';
-            $row->user->save();
-        }
+            $this->syncCarrierUser($carrier);
+
+            return $carrier->fresh('user');
+        });
 
         return response()->json($row, 201);
     }
 
     public function show(Carrier $carrier)
     {
-        return response()->json($carrier);
+        return response()->json($carrier->load('user'));
     }
 
     public function update(Request $request, Carrier $carrier)
@@ -95,16 +101,15 @@ class CarrierController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
-        DB::transaction(function () use ($carrier, $data) {
+        $row = DB::transaction(function () use ($carrier, $data) {
             $carrier->update($data);
 
-            if ($carrier->user) {
-                $carrier->user->is_active = $carrier->status === 'active';
-                $carrier->user->save();
-            }
+            $this->syncCarrierUser($carrier);
+
+            return $carrier->fresh('user');
         });
 
-        return response()->json($carrier->fresh());
+        return response()->json($row);
     }
 
     public function destroy(Carrier $carrier)
@@ -120,5 +125,75 @@ class CarrierController extends Controller
         return response()->json([
             'ok' => true,
         ]);
+    }
+
+    private function syncCarrierUser(Carrier $carrier): void
+    {
+        $user = $carrier->user;
+        $status = $carrier->status;
+        $name = trim((string) ($carrier->contact_name ?: $carrier->company_name ?: ''));
+        $email = trim((string) ($carrier->email ?? ''));
+
+        if ($user) {
+            if ($email !== '') {
+                $this->assertUniqueUserEmail($email, $user->id);
+                $user->email = $email;
+            }
+
+            if ($name !== '') {
+                $user->name = $name;
+            }
+
+            $user->role = 'carrier';
+            $user->is_active = $status === 'active';
+            $user->save();
+        }
+
+        if ($status !== 'active') {
+            return;
+        }
+
+        if (!$user) {
+            if ($email === '') {
+                throw ValidationException::withMessages([
+                    'email' => ['Active carrier must have an email address.'],
+                ]);
+            }
+
+            if ($name === '') {
+                throw ValidationException::withMessages([
+                    'contact_name' => ['Active carrier must have a contact name or company name.'],
+                ]);
+            }
+
+            $this->assertUniqueUserEmail($email);
+
+            $user = User::create([
+                'name' => $name,
+                'email' => $email,
+                'password' => Hash::make(self::DEFAULT_TEMP_PASSWORD),
+                'role' => 'carrier',
+                'is_active' => true,
+                'must_change_password' => true,
+            ]);
+
+            $carrier->user()->associate($user);
+            $carrier->save();
+        }
+    }
+
+    private function assertUniqueUserEmail(string $email, ?int $ignoreUserId = null): void
+    {
+        $query = User::query()->where('email', $email);
+
+        if ($ignoreUserId) {
+            $query->where('id', '!=', $ignoreUserId);
+        }
+
+        if ($query->exists()) {
+            throw ValidationException::withMessages([
+                'email' => ['This email is already used by another user account.'],
+            ]);
+        }
     }
 }
