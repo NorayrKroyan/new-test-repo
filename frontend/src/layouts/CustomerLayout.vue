@@ -8,7 +8,7 @@
         </div>
 
         <nav class="space-y-1 p-4">
-          <RouterLink to="/customer/dashboard" class="block rounded-xl px-4 py-3 text-sm hover:bg-slate-900">Dashboard</RouterLink>
+          <RouterLink :to="'/customer/dashboard'" :class="navLinkClass('/customer/dashboard')">Dashboard</RouterLink>
         </nav>
 
         <div class="mt-auto border-t border-slate-800 p-4">
@@ -23,7 +23,43 @@
       </aside>
 
       <main class="min-w-0 flex-1">
-        <div class="mx-auto w-full max-w-[1600px] p-4">
+        <div class="border-b border-slate-200 bg-white lg:hidden">
+          <div class="flex items-center justify-between px-3 py-3">
+            <div>
+              <div class="text-[11px] uppercase tracking-[0.18em] text-slate-400">MultiModal Portal</div>
+              <div class="text-base font-semibold text-slate-900">Customer Portal</div>
+            </div>
+
+            <button
+                class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                @click="mobileNavOpen = !mobileNavOpen"
+            >
+              {{ mobileNavOpen ? 'Close' : 'Menu' }}
+            </button>
+          </div>
+
+          <div v-if="mobileNavOpen" class="border-t border-slate-200 px-3 py-3">
+            <nav class="grid grid-cols-1 gap-2">
+              <RouterLink
+                  to="/customer/dashboard"
+                  :class="mobileNavLinkClass('/customer/dashboard')"
+                  @click="mobileNavOpen = false"
+              >
+                Dashboard
+              </RouterLink>
+
+              <button
+                  class="mt-2 rounded-xl border border-slate-300 px-4 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                  :disabled="loggingOut"
+                  @click="onLogout"
+              >
+                {{ loggingOut ? 'Logging out...' : 'Logout' }}
+              </button>
+            </nav>
+          </div>
+        </div>
+
+        <div class="mx-auto w-full max-w-[1600px] p-3 sm:p-4 md:p-5">
           <slot />
         </div>
       </main>
@@ -33,11 +69,34 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { customerLogout } from '../api/customer'
 
 const router = useRouter()
+const route = useRoute()
+
 const loggingOut = ref(false)
+const mobileNavOpen = ref(false)
+
+function isActive(path) {
+  return route.path === path
+}
+
+function navLinkClass(path) {
+  return [
+    'block rounded-xl px-4 py-3 text-sm transition',
+    isActive(path) ? 'bg-slate-900 text-white' : 'text-slate-200 hover:bg-slate-900',
+  ]
+}
+
+function mobileNavLinkClass(path) {
+  return [
+    'block rounded-xl px-4 py-3 text-sm transition',
+    isActive(path)
+        ? 'bg-slate-900 text-white'
+        : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
+  ]
+}
 
 async function onLogout() {
   loggingOut.value = true
@@ -47,6 +106,7 @@ async function onLogout() {
   } catch (e) {
   } finally {
     loggingOut.value = false
+    mobileNavOpen.value = false
     router.push('/customer/login')
   }
 }

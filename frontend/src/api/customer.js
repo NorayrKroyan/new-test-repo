@@ -31,3 +31,9 @@ export async function updateCustomerProfile(payload) {
     const { data } = await http.put('/api/customer/profile', payload);
     return data;
 }
+
+export async function changeCustomerPassword(payload) {
+    await initCsrf();
+    const { data } = await http.post('/api/customer/change-password', payload);
+    return data;
+}

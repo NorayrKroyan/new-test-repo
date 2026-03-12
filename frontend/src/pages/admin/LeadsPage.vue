@@ -1,49 +1,101 @@
 <template>
   <AdminLayout>
-    <div class="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+    <div class="mb-3 flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
       <div>
         <h1 class="text-2xl font-semibold text-slate-900">Leads</h1>
       </div>
 
-      <div class="flex gap-2">
+      <div class="flex flex-col gap-2 sm:flex-row">
         <input
             v-model="q"
-            class="h-11 w-72 rounded-xl border border-slate-300 bg-white px-3"
+            class="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 sm:w-72"
             placeholder="Search lead"
             @keyup.enter="loadRows"
         />
-        <button class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white" @click="openCreate">Add</button>
+        <button
+            class="h-10 rounded-xl bg-slate-900 px-4 text-sm font-medium text-white"
+            @click="openCreate"
+        >
+          Add
+        </button>
       </div>
     </div>
 
-    <div class="rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <!-- Mobile cards -->
+    <div class="space-y-2 md:hidden">
+      <div
+          v-for="row in rows"
+          :key="row.id"
+          class="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
+      >
+        <div class="flex items-start justify-between gap-2">
+          <button class="text-left font-semibold leading-5 text-sky-700 hover:underline" @click="editRow(row)">
+            {{ row.full_name || '—' }}
+          </button>
+
+          <div class="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+            {{ row.lead_status || '—' }}
+          </div>
+        </div>
+
+        <div class="mt-2 grid grid-cols-1 gap-1 text-sm leading-5 text-slate-700">
+          <div class="break-all"><span class="font-medium">Email:</span> {{ row.email || '—' }}</div>
+          <div><span class="font-medium">Platform:</span> {{ row.platform || '—' }}</div>
+          <div><span class="font-medium">City:</span> {{ row.city || '—' }}</div>
+          <div><span class="font-medium">Insurance:</span> {{ row.insurance_answer || '—' }}</div>
+        </div>
+
+        <button
+            v-if="row.lead_status !== 'converted_to_carrier'"
+            class="mt-2 w-full rounded-xl border border-sky-300 px-3 py-1.5 text-sm font-medium text-sky-700 hover:bg-sky-50"
+            @click="convertRow(row.id)"
+        >
+          Convert to Carrier
+        </button>
+      </div>
+
+      <div
+          v-if="!rows.length"
+          class="rounded-2xl border border-slate-200 bg-white p-5 text-center text-sm text-slate-500 shadow-sm"
+      >
+        No leads found.
+      </div>
+    </div>
+
+    <!-- Desktop table -->
+    <div class="hidden rounded-2xl border border-slate-200 bg-white shadow-sm md:block">
       <div class="overflow-x-auto">
         <table class="min-w-full text-left text-sm">
           <thead>
           <tr class="border-b border-slate-200 text-slate-500">
-            <th class="px-4 py-3">Lead</th>
-            <th class="px-4 py-3">Platform</th>
-            <th class="px-4 py-3">City</th>
-            <th class="px-4 py-3">Insurance</th>
-            <th class="px-4 py-3">Status</th>
+            <th class="px-4 py-2.5">Lead</th>
+            <th class="px-4 py-2.5">Email</th>
+            <th class="px-4 py-2.5">Platform</th>
+            <th class="px-4 py-2.5">City</th>
+            <th class="px-4 py-2.5">Insurance</th>
+            <th class="px-4 py-2.5">Status</th>
           </tr>
           </thead>
           <tbody>
-          <tr v-for="row in rows" :key="row.id" class="border-b border-slate-100">
-            <td class="px-4 py-3">
-              <button class="font-medium text-sky-700 hover:underline" @click="editRow(row)">
+          <tr v-for="row in rows" :key="row.id" class="border-b border-slate-100 align-top">
+            <td class="px-4 py-2.5">
+              <button class="font-medium leading-5 text-sky-700 hover:underline" @click="editRow(row)">
                 {{ row.full_name || '—' }}
               </button>
-              <div class="text-slate-500">{{ row.email || '—' }}</div>
             </td>
-            <td class="px-4 py-3">{{ row.platform || '—' }}</td>
-            <td class="px-4 py-3">{{ row.city || '—' }}</td>
-            <td class="px-4 py-3">{{ row.insurance_answer || '—' }}</td>
-            <td class="px-4 py-3">
-              <div>{{ row.lead_status || '—' }}</div>
+            <td class="px-4 py-2.5 text-slate-600">
+              <div class="max-w-[260px] break-all leading-5">
+                {{ row.email || '—' }}
+              </div>
+            </td>
+            <td class="px-4 py-2.5 leading-5">{{ row.platform || '—' }}</td>
+            <td class="px-4 py-2.5 leading-5">{{ row.city || '—' }}</td>
+            <td class="px-4 py-2.5 leading-5">{{ row.insurance_answer || '—' }}</td>
+            <td class="px-4 py-2.5">
+              <div class="leading-5">{{ row.lead_status || '—' }}</div>
               <button
                   v-if="row.lead_status !== 'converted_to_carrier'"
-                  class="mt-1 text-xs font-medium text-sky-700 hover:underline"
+                  class="mt-0.5 text-xs font-medium text-sky-700 hover:underline"
                   @click="convertRow(row.id)"
               >
                 Convert to Carrier
@@ -68,16 +120,16 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
-import AdminLayout from '../../layouts/AdminLayout.vue';
-import LeadModal from '../../components/admin/LeadModal.vue';
-import { convertLeadToCarrier, deleteLead, fetchLeads, saveLead } from '../../api/admin';
+import { onMounted, reactive, ref } from 'vue'
+import AdminLayout from '../../layouts/AdminLayout.vue'
+import LeadModal from '../../components/admin/LeadModal.vue'
+import { convertLeadToCarrier, deleteLead, fetchLeads, saveLead } from '../../api/admin'
 
-const q = ref('');
-const rows = ref([]);
-const open = ref(false);
-const saving = ref(false);
-const deleting = ref(false);
+const q = ref('')
+const rows = ref([])
+const open = ref(false)
+const saving = ref(false)
+const deleting = ref(false)
 
 const form = reactive({
   id: null,
@@ -98,7 +150,7 @@ const form = reactive({
   trailer_count: '',
   lead_status: 'new',
   notes: '',
-});
+})
 
 function resetForm() {
   Object.assign(form, {
@@ -120,17 +172,17 @@ function resetForm() {
     trailer_count: '',
     lead_status: 'new',
     notes: '',
-  });
+  })
 }
 
 async function loadRows() {
-  const data = await fetchLeads({ q: q.value });
-  rows.value = data.data || [];
+  const data = await fetchLeads({ q: q.value })
+  rows.value = data.data || []
 }
 
 function openCreate() {
-  resetForm();
-  open.value = true;
+  resetForm()
+  open.value = true
 }
 
 function editRow(row) {
@@ -153,45 +205,45 @@ function editRow(row) {
     trailer_count: row.trailer_count || '',
     lead_status: row.lead_status || 'new',
     notes: row.notes || '',
-  });
+  })
 
-  open.value = true;
+  open.value = true
 }
 
 function closeModal() {
-  open.value = false;
+  open.value = false
 }
 
 async function saveRow() {
-  saving.value = true;
+  saving.value = true
   try {
-    await saveLead(form, form.id);
-    open.value = false;
-    resetForm();
-    await loadRows();
+    await saveLead(form, form.id)
+    open.value = false
+    resetForm()
+    await loadRows()
   } finally {
-    saving.value = false;
+    saving.value = false
   }
 }
 
 async function deleteCurrent() {
-  if (!form.id) return;
+  if (!form.id) return
 
-  deleting.value = true;
+  deleting.value = true
   try {
-    await deleteLead(form.id);
-    open.value = false;
-    resetForm();
-    await loadRows();
+    await deleteLead(form.id)
+    open.value = false
+    resetForm()
+    await loadRows()
   } finally {
-    deleting.value = false;
+    deleting.value = false
   }
 }
 
 async function convertRow(id) {
-  await convertLeadToCarrier(id);
-  await loadRows();
+  await convertLeadToCarrier(id)
+  await loadRows()
 }
 
-onMounted(loadRows);
+onMounted(loadRows)
 </script>

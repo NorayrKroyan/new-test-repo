@@ -16,6 +16,8 @@ import PublicRegisterPage from '../pages/PublicRegisterPage.vue';
 
 import CarrierDashboardPage from '../pages/carrier/CarrierDashboardPage.vue';
 import CustomerDashboardPage from '../pages/customer/CustomerDashboardPage.vue';
+import CarrierChangePasswordPage from '../pages/carrier/CarrierChangePasswordPage.vue';
+import CustomerChangePasswordPage from '../pages/customer/CustomerChangePasswordPage.vue';
 
 const routes = [
     { path: '/', redirect: '/login' },
@@ -32,7 +34,10 @@ const routes = [
     { path: '/admin/jobs-available', name: 'admin-jobs-available', component: JobsAvailablePage, meta: { requiresRole: 'admin' } },
 
     { path: '/carrier/dashboard', name: 'carrier-dashboard', component: CarrierDashboardPage, meta: { requiresRole: 'carrier' } },
+    { path: '/carrier/change-password', name: 'carrier-change-password', component: CarrierChangePasswordPage, meta: { requiresRole: 'carrier', requiresPasswordChange: true } },
+
     { path: '/customer/dashboard', name: 'customer-dashboard', component: CustomerDashboardPage, meta: { requiresRole: 'customer' } },
+    { path: '/customer/change-password', name: 'customer-change-password', component: CustomerChangePasswordPage, meta: { requiresRole: 'customer', requiresPasswordChange: true } },
 
     { path: '/carrier/login', redirect: '/login?role=carrier' },
     { path: '/carrier/register', redirect: '/register?role=carrier' },
@@ -65,10 +70,31 @@ function loginPath(role) {
     return '/login';
 }
 
+function passwordChangePath(role) {
+    if (role === 'carrier') return '/carrier/change-password';
+    if (role === 'customer') return '/customer/change-password';
+    return null;
+}
+
 router.beforeEach(async (to) => {
     if (to.meta.requiresRole) {
         try {
-            await checkRole(to.meta.requiresRole);
+            const session = await checkRole(to.meta.requiresRole);
+            const mustChangePassword = !!session?.user?.must_change_password;
+            const changePath = passwordChangePath(to.meta.requiresRole);
+
+            if (to.meta.requiresPasswordChange) {
+                if (!mustChangePassword) {
+                    return dashboardPath(to.meta.requiresRole);
+                }
+
+                return true;
+            }
+
+            if (mustChangePassword && changePath) {
+                return changePath;
+            }
+
             return true;
         } catch {
             return loginPath(to.meta.requiresRole);
@@ -77,8 +103,11 @@ router.beforeEach(async (to) => {
 
     if (to.meta.guestFor) {
         try {
-            await checkRole(to.meta.guestFor);
-            return dashboardPath(to.meta.guestFor);
+            const session = await checkRole(to.meta.guestFor);
+            const mustChangePassword = !!session?.user?.must_change_password;
+            return mustChangePassword
+                ? (passwordChangePath(to.meta.guestFor) || dashboardPath(to.meta.guestFor))
+                : dashboardPath(to.meta.guestFor);
         } catch {
             return true;
         }
@@ -86,13 +115,17 @@ router.beforeEach(async (to) => {
 
     if (to.meta.publicGuest) {
         try {
-            await fetchCustomerMe();
-            return '/customer/dashboard';
+            const customerSession = await fetchCustomerMe();
+            return customerSession?.user?.must_change_password
+                ? '/customer/change-password'
+                : '/customer/dashboard';
         } catch {}
 
         try {
-            await fetchCarrierMe();
-            return '/carrier/dashboard';
+            const carrierSession = await fetchCarrierMe();
+            return carrierSession?.user?.must_change_password
+                ? '/carrier/change-password'
+                : '/carrier/dashboard';
         } catch {}
 
         return true;

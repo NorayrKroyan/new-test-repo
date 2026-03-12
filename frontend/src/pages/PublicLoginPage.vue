@@ -132,12 +132,24 @@ async function submit() {
 
   try {
     if (role.value === 'carrier') {
-      await carrierLogin(form)
+      const data = await carrierLogin(form)
+
+      if (data?.user?.must_change_password) {
+        router.push('/carrier/change-password')
+        return
+      }
+
       router.push('/carrier/dashboard')
       return
     }
 
-    await customerLogin(form)
+    const data = await customerLogin(form)
+
+    if (data?.user?.must_change_password) {
+      router.push('/customer/change-password')
+      return
+    }
+
     router.push('/customer/dashboard')
   } catch (e) {
     err.value =

@@ -5,18 +5,53 @@
         <h1 class="text-2xl font-semibold text-slate-900">Admin Users</h1>
       </div>
 
-      <div class="flex gap-2">
+      <div class="flex flex-col gap-2 sm:flex-row">
         <input
             v-model="q"
-            class="h-11 w-72 rounded-xl border border-slate-300 bg-white px-3"
+            class="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 sm:w-72"
             placeholder="Search admin user"
             @keyup.enter="loadRows"
         />
-        <button class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white" @click="openCreate">Add</button>
+        <button
+            class="h-11 rounded-xl bg-slate-900 px-4 text-sm font-medium text-white"
+            @click="openCreate"
+        >
+          Add
+        </button>
       </div>
     </div>
 
-    <div class="rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <!-- Mobile cards -->
+    <div class="space-y-3 md:hidden">
+      <div
+          v-for="row in rows"
+          :key="row.id"
+          class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+      >
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <button class="text-left font-semibold text-sky-700 hover:underline" @click="editRow(row)">
+              {{ row.name || '—' }}
+            </button>
+            <div class="mt-1 break-all text-sm text-slate-500">{{ row.email || '—' }}</div>
+          </div>
+
+          <div class="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+            {{ row.is_active ? 'Active' : 'Inactive' }}
+          </div>
+        </div>
+      </div>
+
+      <div
+          v-if="!rows.length"
+          class="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500 shadow-sm"
+      >
+        No admin users found.
+      </div>
+    </div>
+
+    <!-- Desktop table -->
+    <div class="hidden rounded-2xl border border-slate-200 bg-white shadow-sm md:block">
       <div class="overflow-x-auto">
         <table class="min-w-full text-left text-sm">
           <thead>
@@ -54,16 +89,16 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
-import AdminLayout from '../../layouts/AdminLayout.vue';
-import AdminUserModal from '../../components/admin/AdminUserModal.vue';
-import { deleteAdminUser, fetchAdminUsers, saveAdminUser } from '../../api/admin';
+import { onMounted, reactive, ref } from 'vue'
+import AdminLayout from '../../layouts/AdminLayout.vue'
+import AdminUserModal from '../../components/admin/AdminUserModal.vue'
+import { deleteAdminUser, fetchAdminUsers, saveAdminUser } from '../../api/admin'
 
-const q = ref('');
-const rows = ref([]);
-const open = ref(false);
-const saving = ref(false);
-const deleting = ref(false);
+const q = ref('')
+const rows = ref([])
+const open = ref(false)
+const saving = ref(false)
+const deleting = ref(false)
 
 const form = reactive({
   id: null,
@@ -71,64 +106,64 @@ const form = reactive({
   email: '',
   password: '',
   is_active: true,
-});
+})
 
 function resetForm() {
-  form.id = null;
-  form.name = '';
-  form.email = '';
-  form.password = '';
-  form.is_active = true;
+  form.id = null
+  form.name = ''
+  form.email = ''
+  form.password = ''
+  form.is_active = true
 }
 
 async function loadRows() {
-  const data = await fetchAdminUsers({ q: q.value });
-  rows.value = data.data || [];
+  const data = await fetchAdminUsers({ q: q.value })
+  rows.value = data.data || []
 }
 
 function openCreate() {
-  resetForm();
-  open.value = true;
+  resetForm()
+  open.value = true
 }
 
 function editRow(row) {
-  form.id = row.id;
-  form.name = row.name || '';
-  form.email = row.email || '';
-  form.password = '';
-  form.is_active = !!row.is_active;
-  open.value = true;
+  form.id = row.id
+  form.name = row.name || ''
+  form.email = row.email || ''
+  form.password = ''
+  form.is_active = !!row.is_active
+  open.value = true
 }
 
 function closeModal() {
-  open.value = false;
+  open.value = false
 }
 
 async function saveRow() {
-  saving.value = true;
+  saving.value = true
   try {
-    await saveAdminUser(form, form.id);
-    open.value = false;
-    resetForm();
-    await loadRows();
+    await saveAdminUser(form, form.id)
+    open.value = false
+    resetForm()
+    await loadRows()
   } finally {
-    saving.value = false;
+    saving.value = false
   }
 }
 
 async function deleteCurrent() {
-  if (!form.id) return;
+  if (!form.id) return
 
-  deleting.value = true;
+  deleting.value = true
   try {
-    await deleteAdminUser(form.id);
-    open.value = false;
-    resetForm();
-    await loadRows();
+    await deleteAdminUser(form.id)
+    open.value = false
+    resetForm()
+    await loadRows()
   } finally {
-    deleting.value = false;
+    deleting.value = false
   }
 }
 
-onMounted(loadRows);
+onMounted(loadRows)
 </script>

@@ -1,9 +1,9 @@
 <template>
   <div :class="$attrs.class">
-    <div class="grid grid-cols-[160px_minmax(0,1fr)] items-center gap-2">
+    <div class="grid grid-cols-1 gap-1 md:grid-cols-[160px_minmax(0,1fr)] md:items-center md:gap-2">
       <div
-          class="text-right pr-1 text-sm font-semibold text-gray-800"
-          :class="{ 'whitespace-nowrap': nowrapLabel }"
+          class="text-sm font-semibold text-gray-800 md:pr-1 md:text-right"
+          :class="{ 'md:whitespace-nowrap': nowrapLabel }"
       >
         {{ label }}
       </div>
