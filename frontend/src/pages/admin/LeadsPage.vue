@@ -111,7 +111,6 @@
           class="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm md:block"
       >
         <DataTable
-            :key="tableKey"
             class="display nowrap compact stripe row-border hover leads-datatable w-full"
             :data="rows"
             :columns="columns"
@@ -153,7 +152,6 @@ const saving = ref(false)
 const deleting = ref(false)
 const loading = ref(false)
 const err = ref('')
-const tableKey = ref(0)
 const tableWrap = ref(null)
 
 const mobilePage = ref(1)
@@ -454,14 +452,12 @@ async function loadRows() {
 
     rows.value = Array.isArray(data?.data) ? [...data.data] : []
     mobilePage.value = 1
-    tableKey.value += 1
   } catch (e) {
     if (seq !== loadSeq) return
 
     err.value = e?.response?.data?.message || e?.message || 'Failed to load leads'
     rows.value = []
     mobilePage.value = 1
-    tableKey.value += 1
   } finally {
     if (seq === loadSeq) {
       loading.value = false
