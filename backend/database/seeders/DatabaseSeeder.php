@@ -11,6 +11,8 @@ class DatabaseSeeder extends Seeder
         $this->call([
             AdminUserSeeder::class,
             LibertyBoxesLeadsSeeder::class,
+            LeadSeeder::class,
+            HaskellHaulLeadsSeeder::class,
         ]);
     }
 }

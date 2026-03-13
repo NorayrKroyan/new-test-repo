@@ -27,9 +27,11 @@ class LeadController extends Controller
                 });
             })
             ->orderByDesc('id')
-            ->paginate(20);
+            ->get();
 
-        return response()->json($rows);
+        return response()->json([
+            'data' => $rows,
+        ]);
     }
 
     public function store(Request $request)
@@ -121,7 +123,7 @@ class LeadController extends Controller
             'trailer_count' => $lead->trailer_count,
             'insurance_status' => $lead->insurance_answer === 'yes' ? 'active' : 'inactive',
             'status' => 'pending_review',
-            'notes' => 'Converted from lead #'.$lead->id,
+            'notes' => 'Converted from lead #' . $lead->id,
         ]);
 
         $lead->update([
