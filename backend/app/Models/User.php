@@ -38,6 +38,29 @@ class User extends Authenticatable
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::deleting(function (User $user) {
+            if ($user->isForceDeleting()) {
+                return;
+            }
+
+            if ($user->is_active) {
+                $user->newQueryWithoutScopes()
+                    ->whereKey($user->getKey())
+                    ->update([
+                        'is_active' => false,
+                    ]);
+
+                $user->is_active = false;
+            }
+        });
+
+        static::restoring(function (User $user) {
+            $user->is_active = false;
+        });
+    }
+
     public function scopeAdmins(Builder $query): Builder
     {
         return $query->where('role', 'super_admin');

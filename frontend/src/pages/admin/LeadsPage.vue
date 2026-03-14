@@ -7,12 +7,29 @@
             <h1 class="text-2xl font-semibold leading-tight text-slate-900">Leads</h1>
           </div>
 
-          <div class="grid w-full gap-2 sm:grid-cols-[minmax(260px,1fr)_auto] xl:max-w-[640px]">
+          <div class="grid w-full gap-2 sm:grid-cols-[minmax(220px,1fr)_160px_auto_auto] xl:max-w-[980px]">
             <input
                 v-model="q"
                 class="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none placeholder:text-slate-400 focus:border-slate-400"
                 placeholder="Search lead"
             />
+
+            <select
+                v-model="scope"
+                class="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-400"
+            >
+              <option value="active">Active</option>
+              <option value="duplicates">Duplicates</option>
+              <option value="all">All</option>
+            </select>
+
+            <button
+                class="h-10 rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                :disabled="deduping"
+                @click="runAutoDedupNow"
+            >
+              {{ deduping ? 'Deduping...' : 'Auto Dedup' }}
+            </button>
 
             <button
                 class="h-10 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white"
@@ -29,6 +46,13 @@
           class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-700 shadow-sm"
       >
         {{ err }}
+      </div>
+
+      <div
+          v-if="successMessage"
+          class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700 shadow-sm"
+      >
+        {{ successMessage }}
       </div>
 
       <!-- Mobile cards -->
@@ -59,15 +83,52 @@
             <div><span class="font-medium">Platform:</span> {{ row.platform || '—' }}</div>
             <div><span class="font-medium">City:</span> {{ row.city || '—' }}</div>
             <div><span class="font-medium">Insurance:</span> {{ row.insurance_answer || '—' }}</div>
+
+            <div v-if="row.duplicate_of_lead_id">
+              <span class="font-medium">Duplicate Of:</span>
+              #{{ row.duplicate_of_lead_id }}
+              <span v-if="row.duplicate_basis">({{ duplicateBasisLabel(row.duplicate_basis) }})</span>
+            </div>
+
+            <div v-if="Number(row.duplicates_count || 0) > 0">
+              <span class="font-medium">Duplicates:</span>
+              {{ row.duplicates_count }}
+            </div>
           </div>
 
-          <button
-              v-if="normalizeStatus(row.lead_status) !== 'converted_to_carrier'"
-              class="mt-2 w-full rounded-xl border border-sky-300 px-3 py-1.5 text-sm font-medium text-sky-700 hover:bg-sky-50"
-              @click="convertRow(row.id)"
-          >
-            Convert to Carrier
-          </button>
+          <div class="mt-2 flex flex-wrap gap-2">
+            <button
+                v-if="canConvert(row)"
+                class="rounded-xl border border-sky-300 px-3 py-1.5 text-sm font-medium text-sky-700 hover:bg-sky-50"
+                @click="convertRow(row.id)"
+            >
+              Convert
+            </button>
+
+            <button
+                v-if="canMarkDuplicate(row)"
+                class="rounded-xl border border-amber-300 px-3 py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-50"
+                @click="openDuplicateModal(row)"
+            >
+              Mark Dup
+            </button>
+
+            <button
+                v-if="canUnmarkDuplicate(row)"
+                class="rounded-xl border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                @click="unmarkDuplicateRow(row.id)"
+            >
+              Unmark
+            </button>
+
+            <button
+                v-if="canMerge(row)"
+                class="rounded-xl border border-violet-300 px-3 py-1.5 text-sm font-medium text-violet-700 hover:bg-violet-50"
+                @click="openMerge(row.id)"
+            >
+              Merge
+            </button>
+          </div>
         </div>
 
         <div
@@ -119,6 +180,8 @@
       </div>
 
       <LeadModal
+          v-if="open"
+          :key="leadModalKey"
           :open="open"
           :saving="saving"
           :deleting="deleting"
@@ -126,6 +189,29 @@
           @close="closeModal"
           @save="saveRow"
           @delete="deleteCurrent"
+      />
+
+      <LeadDuplicateModal
+          v-if="duplicateOpen"
+          :key="duplicateModalKey"
+          :open="duplicateOpen"
+          :saving="duplicateSaving"
+          :lead="duplicateLead"
+          :form="duplicateForm"
+          :error="duplicateErr"
+          @close="closeDuplicateModal"
+          @save="saveDuplicateModal"
+      />
+
+      <LeadMergeModal
+          v-if="mergeOpen"
+          :key="mergeModalKey"
+          :open="mergeOpen"
+          :preview="mergePreview"
+          :loading="mergeLoading"
+          :saving="mergeSaving"
+          @close="closeMerge"
+          @save="saveMerge"
       />
     </div>
   </AdminLayout>
@@ -139,20 +225,53 @@ import Responsive from 'datatables.net-responsive'
 import FixedHeader from 'datatables.net-fixedheader'
 import AdminLayout from '../../layouts/AdminLayout.vue'
 import LeadModal from '../../components/admin/LeadModal.vue'
-import { convertLeadToCarrier, deleteLead, fetchLeads, saveLead } from '../../api/admin'
+import LeadDuplicateModal from '../../components/admin/LeadDuplicateModal.vue'
+import LeadMergeModal from '../../components/admin/LeadMergeModal.vue'
+import {
+  convertLeadToCarrier,
+  deleteLead,
+  fetchLeadMergePreview,
+  fetchLeads,
+  markLeadDuplicate,
+  mergeLeadGroup,
+  runLeadAutoDedup,
+  saveLead,
+  unmarkLeadDuplicate,
+} from '../../api/admin'
 
 DataTable.use(DataTablesCore)
 DataTable.use(Responsive)
 DataTable.use(FixedHeader)
 
 const q = ref('')
+const scope = ref('active')
 const rows = ref([])
 const open = ref(false)
 const saving = ref(false)
 const deleting = ref(false)
 const loading = ref(false)
+const deduping = ref(false)
 const err = ref('')
+const successMessage = ref('')
 const tableWrap = ref(null)
+
+const leadModalKey = ref(0)
+const duplicateModalKey = ref(0)
+const mergeModalKey = ref(0)
+
+const duplicateOpen = ref(false)
+const duplicateSaving = ref(false)
+const duplicateLead = ref(null)
+const duplicateErr = ref('')
+const duplicateForm = reactive({
+  master_lead_id: '',
+})
+
+const mergeOpen = ref(false)
+const mergeLoading = ref(false)
+const mergeSaving = ref(false)
+const mergeRowId = ref(null)
+const mergePreview = ref(null)
 
 const mobilePage = ref(1)
 const mobilePageSize = ref(10)
@@ -221,6 +340,24 @@ function resetForm() {
   })
 }
 
+function clearMessages() {
+  err.value = ''
+  successMessage.value = ''
+}
+
+function extractErrorMessage(e) {
+  const errors = e?.response?.data?.errors
+  if (errors && typeof errors === 'object') {
+    const firstKey = Object.keys(errors)[0]
+    const firstValue = firstKey ? errors[firstKey] : null
+    if (Array.isArray(firstValue) && firstValue.length) {
+      return String(firstValue[0])
+    }
+  }
+
+  return e?.response?.data?.message || e?.message || 'Request failed'
+}
+
 function esc(value) {
   return String(value ?? '')
       .replaceAll('&', '&amp;')
@@ -255,6 +392,17 @@ function toTitleWords(status) {
       .replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
+function duplicateBasisLabel(basis) {
+  const key = String(basis ?? '').trim().toLowerCase()
+
+  if (key === 'phone') return 'matched by phone'
+  if (key === 'email') return 'matched by email'
+  if (key === 'manual') return 'manual'
+  if (key === 'merged') return 'merged'
+
+  return key ? toTitleWords(key) : 'duplicate'
+}
+
 function getStatusMeta(status) {
   const key = normalizeStatus(status)
 
@@ -286,6 +434,20 @@ function getStatusMeta(status) {
     }
   }
 
+  if (key === 'duplicate') {
+    return {
+      label: 'Duplicate',
+      className: 'status-badge--duplicate',
+    }
+  }
+
+  if (key === 'merged') {
+    return {
+      label: 'Merged',
+      className: 'status-badge--merged',
+    }
+  }
+
   if (!key) {
     return {
       label: '—',
@@ -310,6 +472,22 @@ function statusBadgeClass(status) {
 function renderStatusBadge(status) {
   const meta = getStatusMeta(status)
   return `<span class="status-badge ${meta.className}">${esc(meta.label)}</span>`
+}
+
+function canConvert(row) {
+  return normalizeStatus(row.lead_status) !== 'converted_to_carrier' && !Number(row.duplicate_of_lead_id || 0)
+}
+
+function canMerge(row) {
+  return Number(row.duplicates_count || 0) > 0 || Number(row.duplicate_of_lead_id || 0) > 0
+}
+
+function canMarkDuplicate(row) {
+  return !Number(row.duplicate_of_lead_id || 0) && Number(row.duplicates_count || 0) === 0
+}
+
+function canUnmarkDuplicate(row) {
+  return Number(row.duplicate_of_lead_id || 0) > 0
 }
 
 const columns = [
@@ -391,28 +569,69 @@ const columns = [
     data: null,
     render: (_data, type, row) => {
       const rawStatus = row.lead_status
-      const normalized = normalizeStatus(rawStatus)
 
       if (type === 'sort' || type === 'type' || type === 'filter') {
         return sortValue(displayStatusLabel(rawStatus))
       }
 
-      const convertButton = normalized !== 'converted_to_carrier'
-          ? `
+      const actions = []
+
+      if (canConvert(row)) {
+        actions.push(`
           <button
             type="button"
-            class="lead-convert-link"
+            class="lead-action-link lead-convert-link"
             data-id="${row.id}"
+            data-action="convert"
           >
-            Convert to Carrier
+            Convert
           </button>
-        `
-          : ''
+        `)
+      }
+
+      if (canMarkDuplicate(row)) {
+        actions.push(`
+          <button
+            type="button"
+            class="lead-action-link lead-duplicate-link"
+            data-id="${row.id}"
+            data-action="mark-duplicate"
+          >
+            Mark Dup
+          </button>
+        `)
+      }
+
+      if (canUnmarkDuplicate(row)) {
+        actions.push(`
+          <button
+            type="button"
+            class="lead-action-link lead-unmark-link"
+            data-id="${row.id}"
+            data-action="unmark-duplicate"
+          >
+            Unmark
+          </button>
+        `)
+      }
+
+      if (canMerge(row)) {
+        actions.push(`
+          <button
+            type="button"
+            class="lead-action-link lead-merge-link"
+            data-id="${row.id}"
+            data-action="merge"
+          >
+            Merge
+          </button>
+        `)
+      }
 
       return `
         <div class="lead-status-cell">
           ${renderStatusBadge(rawStatus)}
-          ${convertButton}
+          ${actions.join('')}
         </div>
       `
     },
@@ -446,7 +665,7 @@ async function loadRows() {
   err.value = ''
 
   try {
-    const data = await fetchLeads({ q: q.value })
+    const data = await fetchLeads({ q: q.value, scope: scope.value })
 
     if (seq !== loadSeq) return
 
@@ -455,7 +674,7 @@ async function loadRows() {
   } catch (e) {
     if (seq !== loadSeq) return
 
-    err.value = e?.response?.data?.message || e?.message || 'Failed to load leads'
+    err.value = extractErrorMessage(e)
     rows.value = []
     mobilePage.value = 1
   } finally {
@@ -466,11 +685,15 @@ async function loadRows() {
 }
 
 function openCreate() {
+  clearMessages()
   resetForm()
+  leadModalKey.value += 1
   open.value = true
 }
 
 function editRow(row) {
+  clearMessages()
+
   Object.assign(form, {
     id: row.id,
     source_name: row.source_name || '',
@@ -492,6 +715,7 @@ function editRow(row) {
     notes: row.notes || '',
   })
 
+  leadModalKey.value += 1
   open.value = true
 }
 
@@ -514,9 +738,10 @@ async function saveRow() {
     await saveLead(form, form.id)
     open.value = false
     resetForm()
+    successMessage.value = 'Lead saved.'
     await loadRows()
   } catch (e) {
-    err.value = e?.response?.data?.message || e?.message || 'Failed to save lead'
+    err.value = extractErrorMessage(e)
   } finally {
     saving.value = false
   }
@@ -532,22 +757,142 @@ async function deleteCurrent() {
     await deleteLead(form.id)
     open.value = false
     resetForm()
+    successMessage.value = 'Lead deleted.'
     await loadRows()
   } catch (e) {
-    err.value = e?.response?.data?.message || e?.message || 'Failed to delete lead'
+    err.value = extractErrorMessage(e)
   } finally {
     deleting.value = false
   }
 }
 
 async function convertRow(id) {
-  err.value = ''
+  clearMessages()
 
   try {
     await convertLeadToCarrier(id)
+    successMessage.value = 'Lead converted.'
     await loadRows()
   } catch (e) {
-    err.value = e?.response?.data?.message || e?.message || 'Failed to convert lead'
+    err.value = extractErrorMessage(e)
+  }
+}
+
+function openDuplicateModal(row) {
+  clearMessages()
+  duplicateErr.value = ''
+  duplicateLead.value = row
+  duplicateForm.master_lead_id = ''
+  duplicateModalKey.value += 1
+  duplicateOpen.value = true
+}
+
+function closeDuplicateModal() {
+  duplicateOpen.value = false
+  duplicateSaving.value = false
+  duplicateLead.value = null
+  duplicateForm.master_lead_id = ''
+  duplicateErr.value = ''
+}
+
+async function saveDuplicateModal() {
+  if (!duplicateLead.value) return
+
+  duplicateErr.value = ''
+  const masterLeadId = Number(duplicateForm.master_lead_id)
+
+  if (!Number.isInteger(masterLeadId) || masterLeadId <= 0) {
+    duplicateErr.value = 'Please enter a valid master lead ID.'
+    return
+  }
+
+  duplicateSaving.value = true
+
+  try {
+    const targetLeadId = duplicateLead.value.id
+    await markLeadDuplicate(targetLeadId, { master_lead_id: masterLeadId })
+    closeDuplicateModal()
+    successMessage.value = `Lead #${targetLeadId} marked as duplicate of #${masterLeadId}.`
+    await loadRows()
+  } catch (e) {
+    duplicateErr.value = extractErrorMessage(e)
+  } finally {
+    duplicateSaving.value = false
+  }
+}
+
+async function unmarkDuplicateRow(id) {
+  clearMessages()
+
+  try {
+    await unmarkLeadDuplicate(id)
+    successMessage.value = `Lead #${id} unmarked.`
+    await loadRows()
+  } catch (e) {
+    err.value = extractErrorMessage(e)
+  }
+}
+
+async function runAutoDedupNow() {
+  clearMessages()
+  deduping.value = true
+
+  try {
+    const data = await runLeadAutoDedup({ match_by: 'any' })
+    const marked = Number(data?.summary?.duplicates_marked || 0)
+    successMessage.value = marked > 0 ? `Marked ${marked} duplicate lead${marked === 1 ? '' : 's'}.` : 'No exact duplicates found.'
+    await loadRows()
+  } catch (e) {
+    err.value = extractErrorMessage(e)
+  } finally {
+    deduping.value = false
+  }
+}
+
+async function openMerge(id) {
+  clearMessages()
+  mergeLoading.value = true
+  mergeSaving.value = false
+  mergeRowId.value = Number(id)
+  mergePreview.value = null
+  mergeModalKey.value += 1
+  mergeOpen.value = true
+
+  try {
+    const data = await fetchLeadMergePreview(id)
+    mergePreview.value = data?.data || null
+  } catch (e) {
+    mergeOpen.value = false
+    mergeRowId.value = null
+    err.value = extractErrorMessage(e)
+  } finally {
+    mergeLoading.value = false
+  }
+}
+
+function closeMerge() {
+  mergeOpen.value = false
+  mergeLoading.value = false
+  mergeSaving.value = false
+  mergeRowId.value = null
+  mergePreview.value = null
+}
+
+async function saveMerge(payload) {
+  if (!mergeRowId.value) return
+
+  clearMessages()
+  mergeSaving.value = true
+
+  try {
+    await mergeLeadGroup(mergeRowId.value, payload)
+    closeMerge()
+    successMessage.value = 'Duplicate group merged into one survivor.'
+    await loadRows()
+  } catch (e) {
+    err.value = extractErrorMessage(e)
+  } finally {
+    mergeSaving.value = false
   }
 }
 
@@ -559,14 +904,42 @@ function handleTableClick(event) {
     return
   }
 
-  const convertBtn = event.target.closest('.lead-convert-link')
-  if (convertBtn) {
-    event.preventDefault()
-    convertRow(convertBtn.getAttribute('data-id'))
+  const actionBtn = event.target.closest('.lead-action-link')
+  if (!actionBtn) {
+    return
+  }
+
+  event.preventDefault()
+
+  const rowId = Number(actionBtn.getAttribute('data-id'))
+  const action = actionBtn.getAttribute('data-action')
+  const row = rows.value.find((item) => Number(item.id) === rowId)
+
+  if (!row) {
+    return
+  }
+
+  if (action === 'convert') {
+    convertRow(row.id)
+    return
+  }
+
+  if (action === 'mark-duplicate') {
+    openDuplicateModal(row)
+    return
+  }
+
+  if (action === 'unmark-duplicate') {
+    unmarkDuplicateRow(row.id)
+    return
+  }
+
+  if (action === 'merge') {
+    openMerge(row.id)
   }
 }
 
-watch(q, () => {
+watch([q, scope], () => {
   if (searchTimer) {
     clearTimeout(searchTimer)
   }
@@ -751,18 +1124,33 @@ onBeforeUnmount(() => {
   line-height: 1;
 }
 
-.leads-page .lead-convert-link {
+.leads-page .lead-action-link {
   border: 0;
   background: transparent;
   padding: 0;
-  color: #0369a1;
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
 }
 
-.leads-page .lead-convert-link:hover {
+.leads-page .lead-convert-link {
+  color: #0369a1;
+}
+
+.leads-page .lead-duplicate-link {
+  color: #b45309;
+}
+
+.leads-page .lead-unmark-link {
+  color: #475569;
+}
+
+.leads-page .lead-merge-link {
+  color: #7c3aed;
+}
+
+.leads-page .lead-action-link:hover {
   text-decoration: underline;
 }
 
@@ -801,6 +1189,18 @@ onBeforeUnmount(() => {
   background: #faf5ff;
   border-color: #e9d5ff;
   color: #7e22ce;
+}
+
+.leads-page .status-badge--duplicate {
+  background: #fffbeb;
+  border-color: #fcd34d;
+  color: #b45309;
+}
+
+.leads-page .status-badge--merged {
+  background: #f5f3ff;
+  border-color: #c4b5fd;
+  color: #7c3aed;
 }
 
 .leads-page .status-badge--default {

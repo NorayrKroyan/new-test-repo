@@ -27,9 +27,14 @@ class Lead extends Model
         'trailer_count',
         'lead_status',
         'notes',
+        'merge_notes',
         'raw_payload',
         'linked_carrier_id',
+        'duplicate_of_lead_id',
+        'duplicate_basis',
         'assigned_admin_user_id',
+        'merged_at',
+        'merged_by_user_id',
         'sold_amount',
         'referral_fee',
         'sold_at',
@@ -40,6 +45,7 @@ class Lead extends Model
         return [
             'source_created_at' => 'datetime',
             'sold_at' => 'datetime',
+            'merged_at' => 'datetime',
             'raw_payload' => 'array',
         ];
     }
@@ -49,8 +55,43 @@ class Lead extends Model
         return $this->belongsTo(Carrier::class, 'linked_carrier_id');
     }
 
+    public function duplicateMaster()
+    {
+        return $this->belongsTo(self::class, 'duplicate_of_lead_id');
+    }
+
+    public function duplicates()
+    {
+        return $this->hasMany(self::class, 'duplicate_of_lead_id');
+    }
+
     public function assignedAdmin()
     {
         return $this->belongsTo(User::class, 'assigned_admin_user_id');
+    }
+
+    public function mergedBy()
+    {
+        return $this->belongsTo(User::class, 'merged_by_user_id');
+    }
+
+    public static function normalizePhone(?string $value): ?string
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        $digits = preg_replace('/\D+/', '', $value) ?? '';
+
+        return $digits !== '' ? $digits : null;
+    }
+
+    public static function normalizeEmail(?string $value): ?string
+    {
+        $value = mb_strtolower(trim((string) $value));
+
+        return $value !== '' ? $value : null;
     }
 }

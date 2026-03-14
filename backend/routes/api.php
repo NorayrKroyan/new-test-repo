@@ -20,8 +20,14 @@ Route::prefix('admin')->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index']);
 
         Route::apiResource('/admin-users', AdminUserController::class);
-        Route::apiResource('/leads', LeadController::class);
+
+        Route::post('/leads/auto-dedup', [LeadController::class, 'autoDedup']);
+        Route::get('/leads/{lead}/merge-preview', [LeadController::class, 'mergePreview']);
+        Route::post('/leads/{lead}/merge', [LeadController::class, 'merge']);
+        Route::post('/leads/{lead}/mark-duplicate', [LeadController::class, 'markDuplicate']);
+        Route::post('/leads/{lead}/unmark-duplicate', [LeadController::class, 'unmarkDuplicate']);
         Route::post('/leads/{lead}/convert-to-carrier', [LeadController::class, 'convertToCarrier']);
+        Route::apiResource('/leads', LeadController::class);
 
         Route::apiResource('/carriers', CarrierController::class);
         Route::apiResource('/customers', CustomerController::class);
