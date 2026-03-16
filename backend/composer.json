@@ -5,8 +5,16 @@
     "description": "The skeleton application for the Laravel framework.",
     "keywords": ["laravel", "framework"],
     "license": "MIT",
+    "repositories": [
+        {
+            "type": "composer",
+            "url": "https://repo.koolreport.com"
+        }
+    ],
     "require": {
         "php": "^8.2",
+        "koolreport/laravel": "*",
+        "koolreport/pro": "*",
         "laravel/framework": "^12.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1"

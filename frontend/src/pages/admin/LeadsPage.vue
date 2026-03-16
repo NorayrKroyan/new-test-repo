@@ -7,30 +7,65 @@
             <h1 class="text-2xl font-semibold leading-tight text-slate-900">Leads</h1>
           </div>
 
-          <div class="grid w-full gap-2 sm:grid-cols-[minmax(220px,1fr)_160px_auto_auto] xl:max-w-[980px]">
+          <div class="grid w-full gap-2 md:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_150px_200px_200px_130px_auto_auto] xl:max-w-full">
             <input
                 v-model="q"
-                class="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none placeholder:text-slate-400 focus:border-slate-400"
+                class="h-10 min-w-0 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none placeholder:text-slate-400 focus:border-slate-400"
                 placeholder="Search lead"
             />
 
             <select
                 v-model="scope"
-                class="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-400"
+                class="h-10 min-w-0 rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-400"
             >
               <option value="active">Active</option>
               <option value="duplicates">Duplicates</option>
               <option value="all">All</option>
             </select>
 
+            <select
+                v-model="adName"
+                class="h-10 min-w-0 rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-400"
+            >
+              <option value="">All Ad Names</option>
+              <option v-for="name in adNames" :key="name" :value="name">
+                {{ name }}
+              </option>
+            </select>
+
+            <select
+                v-model="stageId"
+                class="h-10 min-w-0 rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-400"
+            >
+              <option value="">All Stages</option>
+              <option v-for="stage in stages" :key="stage.id" :value="String(stage.id)">
+                {{ stage.stage_name }} / {{ stage.stage_group }} / {{ stage.stage_order }}
+              </option>
+            </select>
+
+            <div class="funnel-toggle-wrap h-10 rounded-xl border border-slate-300 bg-white px-3">
+              <label for="lead-funnel-toggle" class="funnel-toggle-label">Funnel</label>
+
+              <label for="lead-funnel-toggle" class="funnel-toggle-native">
+                <input
+                    id="lead-funnel-toggle"
+                    v-model="funnelEnabled"
+                    type="checkbox"
+                    class="funnel-toggle-input"
+                />
+                <span class="funnel-toggle-slider">
+                  <span class="funnel-toggle-handle"></span>
+                </span>
+              </label>
+            </div>
+
             <button
-                class="h-10 rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                class="inline-flex h-10 min-w-[150px] items-center justify-center whitespace-nowrap rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
                 :disabled="deduping"
                 @click="runAutoDedupNow"
             >
               {{ deduping ? 'Deduping...' : 'Auto Dedup' }}
             </button>
-
             <button
                 class="h-10 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white"
                 @click="openCreate"
@@ -55,7 +90,21 @@
         {{ successMessage }}
       </div>
 
-      <!-- Mobile cards -->
+      <div
+          v-if="funnelEnabled && showFunnel"
+          class="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
+      >
+        <div class="mb-2 text-sm font-semibold text-slate-900">Lead Funnel</div>
+
+        <iframe
+            :key="funnelChartFrameKey"
+            :src="funnelChartUrl"
+            title="Lead Funnel"
+            class="lead-funnel-frame"
+            loading="lazy"
+        />
+      </div>
+
       <div class="space-y-2 md:hidden">
         <div
             v-for="row in mobileRows"
@@ -80,9 +129,11 @@
 
           <div class="mt-2 grid grid-cols-1 gap-1 text-sm leading-5 text-slate-700">
             <div class="break-all"><span class="font-medium">Email:</span> {{ row.email || '—' }}</div>
+            <div><span class="font-medium">Ad Name:</span> {{ row.ad_name || '—' }}</div>
             <div><span class="font-medium">Platform:</span> {{ row.platform || '—' }}</div>
             <div><span class="font-medium">City:</span> {{ row.city || '—' }}</div>
             <div><span class="font-medium">Insurance:</span> {{ row.insurance_answer || '—' }}</div>
+            <div><span class="font-medium">Stage:</span> {{ displayStageLabel(row) }}</div>
 
             <div v-if="row.duplicate_of_lead_id">
               <span class="font-medium">Duplicate Of:</span>
@@ -166,7 +217,6 @@
         </div>
       </div>
 
-      <!-- Desktop DataTable -->
       <div
           ref="tableWrap"
           class="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm md:block"
@@ -186,6 +236,7 @@
           :saving="saving"
           :deleting="deleting"
           :form="form"
+          :stages="stages"
           @close="closeModal"
           @save="saveRow"
           @delete="deleteCurrent"
@@ -230,8 +281,11 @@ import LeadMergeModal from '../../components/admin/LeadMergeModal.vue'
 import {
   convertLeadToCarrier,
   deleteLead,
+  fetchLeadAdNames,
+  fetchLeadFunnelSummary,
   fetchLeadMergePreview,
   fetchLeads,
+  fetchStages,
   markLeadDuplicate,
   mergeLeadGroup,
   runLeadAutoDedup,
@@ -245,7 +299,14 @@ DataTable.use(FixedHeader)
 
 const q = ref('')
 const scope = ref('active')
+const adName = ref('')
+const adNames = ref([])
+const stageId = ref('')
 const rows = ref([])
+const stages = ref([])
+const funnelChartFrameKey = ref(0)
+const showFunnel = ref(false)
+const funnelEnabled = ref(true)
 const open = ref(false)
 const saving = ref(false)
 const deleting = ref(false)
@@ -297,7 +358,10 @@ const form = reactive({
   truck_count: '',
   trailer_count: '',
   lead_status: 'new',
+  lead_stage_id: '',
   notes: '',
+  duplicate_of_lead_id: null,
+  duplicate_basis: '',
 })
 
 const mobileTotalPages = computed(() => {
@@ -310,6 +374,38 @@ const mobileRows = computed(() => {
   const end = start + mobilePageSize.value
   return rows.value.slice(start, end)
 })
+
+const funnelChartUrl = computed(() => {
+  const params = new URLSearchParams()
+
+  if (q.value) params.set('q', q.value)
+  if (scope.value) params.set('scope', scope.value)
+  if (adName.value) params.set('ad_name', adName.value)
+  if (stageId.value) params.set('stage_id', stageId.value)
+
+  params.set('_frame', String(funnelChartFrameKey.value))
+
+  return `/api/admin/leads/funnel-chart?${params.toString()}`
+})
+
+function buildFunnelParams() {
+  return {
+    q: q.value || undefined,
+    scope: scope.value || undefined,
+    ad_name: adName.value || undefined,
+    stage_id: stageId.value || undefined,
+  }
+}
+
+async function loadFunnelVisibility() {
+  if (!adName.value) {
+    return false
+  }
+
+  const data = await fetchLeadFunnelSummary(buildFunnelParams())
+
+  return Array.isArray(data?.data) && data.data.length > 0
+}
 
 function goToMobilePage(page) {
   if (page < 1) page = 1
@@ -336,7 +432,10 @@ function resetForm() {
     truck_count: '',
     trailer_count: '',
     lead_status: 'new',
+    lead_stage_id: '',
     notes: '',
+    duplicate_of_lead_id: null,
+    duplicate_basis: '',
   })
 }
 
@@ -474,6 +573,32 @@ function renderStatusBadge(status) {
   return `<span class="status-badge ${meta.className}">${esc(meta.label)}</span>`
 }
 
+function displayStageLabel(row) {
+  if (row?.stage?.stage_name) {
+    return `${row.stage.stage_name}${row.stage.stage_group ? ` (${row.stage.stage_group})` : ''}`
+  }
+
+  return '—'
+}
+
+function renderStageCell(row, type) {
+  const stageName = row?.stage?.stage_name || ''
+
+  if (type === 'sort' || type === 'type' || type === 'filter') {
+    return stageName
+  }
+
+  if (!stageName) {
+    return '—'
+  }
+
+  return `
+    <div class="lead-stage-cell">
+      <div class="lead-stage-name">${esc(stageName)}</div>
+    </div>
+  `
+}
+
 function canConvert(row) {
   return normalizeStatus(row.lead_status) !== 'converted_to_carrier' && !Number(row.duplicate_of_lead_id || 0)
 }
@@ -526,6 +651,19 @@ const columns = [
     },
   },
   {
+    title: 'Ad Name',
+    data: 'ad_name',
+    render: (data, type) => {
+      const value = displayValue(data)
+
+      if (type === 'sort' || type === 'type' || type === 'filter') {
+        return sortValue(value)
+      }
+
+      return esc(value)
+    },
+  },
+  {
     title: 'Platform',
     data: 'platform',
     render: (data, type) => {
@@ -563,6 +701,11 @@ const columns = [
 
       return esc(value)
     },
+  },
+  {
+    title: 'Stage',
+    data: null,
+    render: (_data, type, row) => renderStageCell(row, type),
   },
   {
     title: 'Status',
@@ -659,24 +802,100 @@ const options = {
   },
 }
 
+function buildLeadPayload() {
+  return {
+    id: form.id,
+    source_name: form.source_name || '',
+    ad_name: form.ad_name || '',
+    platform: form.platform || '',
+    source_created_at: form.source_created_at || '',
+    lead_date_choice: form.lead_date_choice || '',
+    insurance_answer: form.insurance_answer || '',
+    full_name: form.full_name || '',
+    email: form.email || '',
+    phone: form.phone || '',
+    city: form.city || '',
+    state: form.state || '',
+    carrier_class: form.carrier_class || '',
+    usdot: form.usdot || '',
+    truck_count: form.truck_count === '' ? null : form.truck_count,
+    trailer_count: form.trailer_count === '' ? null : form.trailer_count,
+    lead_status: form.lead_status || 'new',
+    lead_stage_id: form.lead_stage_id === '' ? null : Number(form.lead_stage_id),
+    notes: form.notes || '',
+  }
+}
+
+async function loadAdNames() {
+  const data = await fetchLeadAdNames()
+  adNames.value = Array.isArray(data?.data) ? [...data.data] : []
+}
+
+async function loadStages() {
+  let data = await fetchStages({
+    group: adName.value || undefined,
+  })
+
+  let nextStages = Array.isArray(data?.data) ? [...data.data] : []
+
+  if (adName.value && nextStages.length === 0) {
+    data = await fetchStages()
+    nextStages = Array.isArray(data?.data) ? [...data.data] : []
+  }
+
+  stages.value = nextStages
+
+  if (stageId.value && !nextStages.some((stage) => String(stage.id) === String(stageId.value))) {
+    stageId.value = ''
+  }
+}
+
 async function loadRows() {
   const seq = ++loadSeq
   loading.value = true
   err.value = ''
 
   try {
-    const data = await fetchLeads({ q: q.value, scope: scope.value })
+    const data = await fetchLeads({
+      q: q.value,
+      scope: scope.value,
+      ad_name: adName.value || undefined,
+      stage_id: stageId.value || undefined,
+    })
 
     if (seq !== loadSeq) return
 
     rows.value = Array.isArray(data?.data) ? [...data.data] : []
     mobilePage.value = 1
+
+    try {
+      if (!funnelEnabled.value || !adName.value) {
+        showFunnel.value = false
+        return
+      }
+
+      const hasFunnelData = await loadFunnelVisibility()
+
+      if (seq !== loadSeq) return
+
+      showFunnel.value = hasFunnelData
+
+      if (hasFunnelData) {
+        funnelChartFrameKey.value += 1
+      }
+    } catch (funnelError) {
+      if (seq !== loadSeq) return
+
+      showFunnel.value = false
+      err.value = extractErrorMessage(funnelError)
+    }
   } catch (e) {
     if (seq !== loadSeq) return
 
     err.value = extractErrorMessage(e)
     rows.value = []
     mobilePage.value = 1
+    showFunnel.value = false
   } finally {
     if (seq === loadSeq) {
       loading.value = false
@@ -712,7 +931,10 @@ function editRow(row) {
     truck_count: row.truck_count || '',
     trailer_count: row.trailer_count || '',
     lead_status: row.lead_status || 'new',
+    lead_stage_id: row.lead_stage_id ? String(row.lead_stage_id) : (row.stage?.id ? String(row.stage.id) : ''),
     notes: row.notes || '',
+    duplicate_of_lead_id: row.duplicate_of_lead_id || null,
+    duplicate_basis: row.duplicate_basis || '',
   })
 
   leadModalKey.value += 1
@@ -735,7 +957,7 @@ async function saveRow() {
   err.value = ''
 
   try {
-    await saveLead(form, form.id)
+    await saveLead(buildLeadPayload(), form.id)
     open.value = false
     resetForm()
     successMessage.value = 'Lead saved.'
@@ -939,18 +1161,29 @@ function handleTableClick(event) {
   }
 }
 
-watch([q, scope], () => {
+watch([q, scope, adName, stageId], () => {
   if (searchTimer) {
     clearTimeout(searchTimer)
   }
 
-  searchTimer = setTimeout(() => {
-    loadRows()
+  searchTimer = setTimeout(async () => {
+    await loadStages()
+    await loadRows()
   }, 250)
 })
 
-onMounted(() => {
-  loadRows()
+watch(funnelEnabled, async (enabled) => {
+  if (!enabled) {
+    return
+  }
+
+  await loadRows()
+})
+
+onMounted(async () => {
+  await loadAdNames()
+  await loadStages()
+  await loadRows()
 
   if (tableWrap.value) {
     tableWrap.value.addEventListener('click', handleTableClick)
@@ -1154,6 +1387,20 @@ onBeforeUnmount(() => {
   text-decoration: underline;
 }
 
+.leads-page .lead-stage-cell {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 1px;
+  line-height: 1.05rem;
+  white-space: nowrap;
+}
+
+.leads-page .lead-stage-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
 .leads-page .status-badge {
   display: inline-flex;
   align-items: center;
@@ -1207,6 +1454,90 @@ onBeforeUnmount(() => {
   background: #f8fafc;
   border-color: #cbd5e1;
   color: #475569;
+}
+
+.leads-page .funnel-toggle-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.leads-page .funnel-toggle-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+  white-space: nowrap;
+}
+
+.leads-page .funnel-toggle-native {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 42px;
+  min-width: 42px;
+  height: 24px;
+  flex: 0 0 42px;
+  cursor: pointer;
+}
+
+.leads-page .funnel-toggle-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+  z-index: 3;
+}
+
+.leads-page .funnel-toggle-slider {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: #e2e8f0;
+  border: 1px solid #cbd5e1;
+  transition: all 0.2s ease;
+}
+
+.leads-page .funnel-toggle-handle {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.18);
+  transition: transform 0.2s ease;
+}
+
+.leads-page .funnel-toggle-input:checked + .funnel-toggle-slider {
+  background: #0f172a;
+  border-color: #0f172a;
+}
+
+.leads-page .funnel-toggle-input:checked + .funnel-toggle-slider .funnel-toggle-handle {
+  transform: translateX(18px);
+}
+
+.leads-page .funnel-toggle-input:focus-visible + .funnel-toggle-slider {
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.12);
+}
+
+.leads-page .lead-funnel-frame {
+  display: block;
+  width: 100%;
+  min-height: 320px;
+  border: 0;
+  background: #ffffff;
+}
+
+@media (max-width: 1279px) {
+  .leads-page .top-card .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 767px) {

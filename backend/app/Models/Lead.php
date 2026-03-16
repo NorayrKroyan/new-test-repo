@@ -26,6 +26,8 @@ class Lead extends Model
         'truck_count',
         'trailer_count',
         'lead_status',
+        'lead_stage_id',
+        'funnel_enabled',
         'notes',
         'merge_notes',
         'raw_payload',
@@ -47,6 +49,7 @@ class Lead extends Model
             'sold_at' => 'datetime',
             'merged_at' => 'datetime',
             'raw_payload' => 'array',
+            'funnel_enabled' => 'boolean',
         ];
     }
 
@@ -73,6 +76,11 @@ class Lead extends Model
     public function mergedBy()
     {
         return $this->belongsTo(User::class, 'merged_by_user_id');
+    }
+
+    public function stage()
+    {
+        return $this->belongsTo(Stage::class, 'lead_stage_id');
     }
 
     public static function normalizePhone(?string $value): ?string

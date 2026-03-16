@@ -46,9 +46,28 @@ export async function fetchLeads(params = {}) {
     return data
 }
 
+export async function fetchLeadAdNames(params = {}) {
+    const { data } = await http.get('/api/admin/leads/ad-names', { params })
+    return data
+}
+
 export async function fetchLeadMergePreview(id) {
     const { data } = await http.get(`/api/admin/leads/${id}/merge-preview`)
     return data
+}
+
+export async function fetchLeadFunnelSummary(params = {}) {
+    const { data } = await http.get('/api/admin/leads/funnel-summary', { params })
+    return data
+}
+
+export async function fetchLeadFunnelChartHtml(params = {}) {
+    const response = await http.get('/api/admin/leads/funnel-chart', {
+        params,
+        responseType: 'text',
+    })
+
+    return response.data
 }
 
 export async function mergeLeadGroup(id, payload) {
@@ -88,6 +107,26 @@ export async function unmarkLeadDuplicate(id) {
 
 export async function runLeadAutoDedup(payload = {}) {
     const { data } = await http.post('/api/admin/leads/auto-dedup', payload)
+    return data
+}
+
+export async function fetchStages(params = {}) {
+    const { data } = await http.get('/api/admin/stages', { params })
+    return data
+}
+
+export async function saveStage(payload, id = null) {
+    if (id) {
+        const { data } = await http.put(`/api/admin/stages/${id}`, payload)
+        return data
+    }
+
+    const { data } = await http.post('/api/admin/stages', payload)
+    return data
+}
+
+export async function deleteStage(id) {
+    const { data } = await http.delete(`/api/admin/stages/${id}`)
     return data
 }
 

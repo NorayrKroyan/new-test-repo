@@ -46,6 +46,15 @@
             </select>
           </ModalFieldRow>
 
+          <ModalFieldRow label="Stage:" class="md:col-span-1">
+            <select v-model="form.lead_stage_id" class="w-full max-w-[320px] rounded-lg border border-gray-300 px-3 py-2 text-sm">
+              <option value="">—</option>
+              <option v-for="stage in stages" :key="stage.id" :value="String(stage.id)">
+                {{ stage.stage_name }} / {{ stage.stage_group }} / {{ stage.stage_order }}
+              </option>
+            </select>
+          </ModalFieldRow>
+
           <ModalFieldRow label="Full Name:" class="md:col-span-1">
             <input v-model="form.full_name" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
           </ModalFieldRow>
@@ -118,6 +127,10 @@ const props = defineProps({
   saving: Boolean,
   deleting: { type: Boolean, default: false },
   form: Object,
+  stages: {
+    type: Array,
+    default: () => [],
+  },
 })
 
 const duplicateBasisLabel = computed(() => {

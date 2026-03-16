@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Carrier;
 use App\Models\Lead;
+use App\Models\Stage;
+use App\Reports\LeadFunnelReport;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
@@ -23,11 +25,14 @@ class LeadController extends Controller
         $query = Lead::query()
             ->with([
                 'duplicateMaster:id,full_name,email,phone,lead_status',
+                'stage:id,stage_name,stage_group,stage_order',
             ])
             ->withCount('duplicates');
 
         $this->applyScope($query, $scope);
+        $this->applyAdNameFilter($query, $request->query('ad_name'));
         $this->applySearch($query, $q);
+        $this->applyStageFilter($query, $request->query('stage_id'));
 
         $rows = $query
             ->orderByDesc('id')
@@ -118,7 +123,6 @@ class LeadController extends Controller
                 'lead_status' => 'converted_to_carrier',
             ]);
 
-            // Remove from Leads page, keep history in DB.
             $lead->delete();
 
             return $carrier;
@@ -271,7 +275,6 @@ class LeadController extends Controller
             foreach ($fieldDefinitions as $field) {
                 $fieldKey = $field['key'];
                 $sourceLeadId = (int) data_get($request->input('selections'), $fieldKey);
-                /** @var Lead|null $sourceLead */
                 $sourceLead = $group->get($sourceLeadId);
 
                 if (!$sourceLead) {
@@ -326,10 +329,163 @@ class LeadController extends Controller
         ]);
     }
 
+    public function adNames(Request $request)
+    {
+        $q = trim((string) $request->query('q', ''));
+
+        $rows = Lead::query()
+            ->whereNotNull('ad_name')
+            ->where('ad_name', '!=', '')
+            ->when($q !== '', function ($query) use ($q) {
+                $query->where('ad_name', 'like', "%{$q}%");
+            })
+            ->distinct()
+            ->orderBy('ad_name')
+            ->pluck('ad_name')
+            ->values();
+
+        return response()->json([
+            'data' => $rows,
+        ]);
+    }
+
+    public function funnelSummary(Request $request)
+    {
+        return response()->json([
+            'data' => $this->buildFunnelSummaryRows($request),
+        ]);
+    }
+
+    public function funnelChart(Request $request)
+    {
+        $rows = $this->buildFunnelSummaryRows($request)
+            ->sort(function ($a, $b) {
+                $countCompare = ((int) $b->lead_count) <=> ((int) $a->lead_count);
+
+                if ($countCompare !== 0) {
+                    return $countCompare;
+                }
+
+                $stageOrderCompare = ((int) $a->stage_order) <=> ((int) $b->stage_order);
+
+                if ($stageOrderCompare !== 0) {
+                    return $stageOrderCompare;
+                }
+
+                return strcmp((string) $a->stage_name, (string) $b->stage_name);
+            })
+            ->values()
+            ->map(function ($row) {
+                $count = (int) $row->lead_count;
+
+                return [
+                    'label' => $row->stage_name . ': ' . $count,
+                    'amount' => $count,
+                ];
+            })
+            ->all();
+
+        if (empty($rows)) {
+            return response(<<<'HTML'
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: #ffffff;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+        .empty {
+            padding: 28px 16px;
+            text-align: center;
+            color: #64748b;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="empty">No funnel data.</div>
+</body>
+</html>
+HTML, 200)->header('Content-Type', 'text/html; charset=UTF-8');
+        }
+
+        $report = new LeadFunnelReport([
+            'rows' => $rows,
+        ]);
+
+        $report->run();
+
+        ob_start();
+        $report->render();
+        $html = ob_get_clean();
+
+        return response($html, 200)->header('Content-Type', 'text/html; charset=UTF-8');
+    }
+
+    private function buildFunnelSummaryRows(Request $request): Collection
+    {
+        $q = trim((string) $request->query('q', ''));
+        $scope = $this->normalizeScope($request->query('scope'));
+        $stageId = (int) $request->query('stage_id', 0);
+        $adName = trim((string) $request->query('ad_name', ''));
+
+        if ($adName === '') {
+            return collect();
+        }
+
+        $query = Lead::query()
+            ->join('stages', 'stages.id', '=', 'leads.lead_stage_id')
+            ->whereNull('leads.deleted_at')
+            ->where('leads.ad_name', $adName)
+            ->where('stages.stage_order', '<', 10);
+
+        if ($scope === 'duplicates') {
+            $query->whereNotNull('leads.duplicate_of_lead_id');
+        } elseif ($scope === 'active') {
+            $query->whereNull('leads.duplicate_of_lead_id');
+        }
+
+        if ($stageId > 0) {
+            $query->where('leads.lead_stage_id', $stageId);
+        }
+
+        if ($q !== '') {
+            $query->where(function ($sub) use ($q) {
+                $sub->where('leads.full_name', 'like', "%{$q}%")
+                    ->orWhere('leads.email', 'like', "%{$q}%")
+                    ->orWhere('leads.phone', 'like', "%{$q}%")
+                    ->orWhere('leads.city', 'like', "%{$q}%")
+                    ->orWhere('leads.state', 'like', "%{$q}%")
+                    ->orWhere('leads.carrier_class', 'like', "%{$q}%")
+                    ->orWhere('leads.platform', 'like', "%{$q}%")
+                    ->orWhere('leads.ad_name', 'like', "%{$q}%")
+                    ->orWhere('stages.stage_name', 'like', "%{$q}%")
+                    ->orWhere('stages.stage_group', 'like', "%{$q}%");
+            });
+        }
+
+        return $query
+            ->groupBy('stages.id', 'stages.stage_name', 'stages.stage_group', 'stages.stage_order')
+            ->orderBy('stages.stage_order')
+            ->orderBy('stages.stage_name')
+            ->get([
+                'stages.id',
+                'stages.stage_name',
+                'stages.stage_group',
+                'stages.stage_order',
+                DB::raw('COUNT(leads.id) as lead_count'),
+            ]);
+    }
+
     private function hydrateLead(Lead $lead): Lead
     {
         return $lead->fresh([
             'duplicateMaster:id,full_name,email,phone,lead_status',
+            'stage:id,stage_name,stage_group,stage_order',
         ])->loadCount('duplicates');
     }
 
@@ -352,6 +508,7 @@ class LeadController extends Controller
             'truck_count' => ['nullable', 'integer'],
             'trailer_count' => ['nullable', 'integer'],
             'lead_status' => ['nullable', 'string', 'max:255'],
+            'lead_stage_id' => ['nullable', 'integer', Rule::exists('stages', 'id')],
             'notes' => ['nullable', 'string'],
             'duplicate_of_lead_id' => [
                 'nullable',
@@ -369,6 +526,16 @@ class LeadController extends Controller
                 'duplicate_of_lead_id' => 'A lead cannot be marked as a duplicate of itself.',
             ]);
         }
+
+        $effectiveStageId = array_key_exists('lead_stage_id', $data)
+            ? $data['lead_stage_id']
+            : $lead?->lead_stage_id;
+
+        $stageOrder = $effectiveStageId
+            ? (int) (Stage::query()->whereKey($effectiveStageId)->value('stage_order') ?? 0)
+            : 0;
+
+        $data['funnel_enabled'] = $stageOrder < 10;
 
         return $data;
     }
@@ -434,6 +601,10 @@ class LeadController extends Controller
                     $masterQuery->where('full_name', 'like', "%{$q}%")
                         ->orWhere('email', 'like', "%{$q}%")
                         ->orWhere('phone', 'like', "%{$q}%");
+                })
+                ->orWhereHas('stage', function (Builder $stageQuery) use ($q) {
+                    $stageQuery->where('stage_name', 'like', "%{$q}%")
+                        ->orWhere('stage_group', 'like', "%{$q}%");
                 });
         });
     }
@@ -447,6 +618,24 @@ class LeadController extends Controller
 
         if ($scope === 'active') {
             $query->whereNull('duplicate_of_lead_id');
+        }
+    }
+
+    private function applyAdNameFilter(Builder $query, mixed $adName): void
+    {
+        $adName = trim((string) $adName);
+
+        if ($adName !== '') {
+            $query->where('ad_name', $adName);
+        }
+    }
+
+    private function applyStageFilter(Builder $query, mixed $stageId): void
+    {
+        $stageId = (int) $stageId;
+
+        if ($stageId > 0) {
+            $query->where('lead_stage_id', $stageId);
         }
     }
 
@@ -493,7 +682,6 @@ class LeadController extends Controller
                     return $this->compareLeadPriority($a, $b);
                 })->values();
 
-                /** @var Lead $master */
                 $master = $sorted->first();
 
                 foreach ($sorted->slice(1) as $duplicate) {

@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\Admin\CustomerController;
 use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\JobAvailableController;
 use App\Http\Controllers\Api\Admin\LeadController;
+use App\Http\Controllers\Api\Admin\StageController;
 use App\Http\Controllers\Api\Carrier\AuthController as CarrierAuthController;
 use App\Http\Controllers\Api\Customer\AuthController as CustomerAuthController;
 use Illuminate\Support\Facades\Route;
@@ -21,7 +22,11 @@ Route::prefix('admin')->group(function () {
 
         Route::apiResource('/admin-users', AdminUserController::class);
 
+        Route::get('leads/funnel-chart', [LeadController::class, 'funnelChart']);
+        Route::get('/leads/ad-names', [LeadController::class, 'adNames']);
+
         Route::post('/leads/auto-dedup', [LeadController::class, 'autoDedup']);
+        Route::get('/leads/funnel-summary', [LeadController::class, 'funnelSummary']);
         Route::get('/leads/{lead}/merge-preview', [LeadController::class, 'mergePreview']);
         Route::post('/leads/{lead}/merge', [LeadController::class, 'merge']);
         Route::post('/leads/{lead}/mark-duplicate', [LeadController::class, 'markDuplicate']);
@@ -29,6 +34,7 @@ Route::prefix('admin')->group(function () {
         Route::post('/leads/{lead}/convert-to-carrier', [LeadController::class, 'convertToCarrier']);
         Route::apiResource('/leads', LeadController::class);
 
+        Route::apiResource('/stages', StageController::class);
         Route::apiResource('/carriers', CarrierController::class);
         Route::apiResource('/customers', CustomerController::class);
         Route::apiResource('/jobs-available', JobAvailableController::class);

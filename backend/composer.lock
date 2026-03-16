@@ -4,8 +4,62 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "30ede9cc2d9eecae449b0452a2292045",
+    "content-hash": "4304b18da7c9838dc02a23d042fa2d92",
     "packages": [
+        {
+            "name": "bacon/bacon-qr-code",
+            "version": "2.0.8",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Bacon/BaconQrCode.git",
+                "reference": "8674e51bb65af933a5ffaf1c308a660387c35c22"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/Bacon/BaconQrCode/zipball/8674e51bb65af933a5ffaf1c308a660387c35c22",
+                "reference": "8674e51bb65af933a5ffaf1c308a660387c35c22",
+                "shasum": ""
+            },
+            "require": {
+                "dasprid/enum": "^1.0.3",
+                "ext-iconv": "*",
+                "php": "^7.1 || ^8.0"
+            },
+            "require-dev": {
+                "phly/keep-a-changelog": "^2.1",
+                "phpunit/phpunit": "^7 | ^8 | ^9",
+                "spatie/phpunit-snapshot-assertions": "^4.2.9",
+                "squizlabs/php_codesniffer": "^3.4"
+            },
+            "suggest": {
+                "ext-imagick": "to generate QR code images"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "BaconQrCode\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "BSD-2-Clause"
+            ],
+            "authors": [
+                {
+                    "name": "Ben Scholzen 'DASPRiD'",
+                    "email": "mail@dasprids.de",
+                    "homepage": "https://dasprids.de/",
+                    "role": "Developer"
+                }
+            ],
+            "description": "BaconQrCode is a QR code generator for PHP.",
+            "homepage": "https://github.com/Bacon/BaconQrCode",
+            "support": {
+                "issues": "https://github.com/Bacon/BaconQrCode/issues",
+                "source": "https://github.com/Bacon/BaconQrCode/tree/2.0.8"
+            },
+            "time": "2022-12-07T17:46:57+00:00"
+        },
         {
             "name": "brick/math",
             "version": "0.14.8",
@@ -134,6 +188,231 @@
                 }
             ],
             "time": "2024-02-09T16:56:22+00:00"
+        },
+        {
+            "name": "chromeheadlessio/php-client",
+            "version": "1.4.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/chromeheadlessio/php-client.git",
+                "reference": "9dc633d87d4fc71c67cc9190c31417022757714d"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/chromeheadlessio/php-client/zipball/9dc633d87d4fc71c67cc9190c31417022757714d",
+                "reference": "9dc633d87d4fc71c67cc9190c31417022757714d",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=5.4"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "chromeheadlessio\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "chromeheadlessio",
+                    "homepage": "https://chromeheadless.io"
+                }
+            ],
+            "description": "An Open Source PHP client to use cloud export service chromeheadless.io",
+            "homepage": "https://chromeheadless.io",
+            "keywords": [
+                "pdf export service",
+                "php client"
+            ],
+            "support": {
+                "issues": "https://github.com/chromeheadlessio/php-client/issues",
+                "source": "https://github.com/chromeheadlessio/php-client/tree/v1.4.0"
+            },
+            "time": "2023-03-29T08:21:39+00:00"
+        },
+        {
+            "name": "composer/pcre",
+            "version": "3.3.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/composer/pcre.git",
+                "reference": "b2bed4734f0cc156ee1fe9c0da2550420d99a21e"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/composer/pcre/zipball/b2bed4734f0cc156ee1fe9c0da2550420d99a21e",
+                "reference": "b2bed4734f0cc156ee1fe9c0da2550420d99a21e",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.4 || ^8.0"
+            },
+            "conflict": {
+                "phpstan/phpstan": "<1.11.10"
+            },
+            "require-dev": {
+                "phpstan/phpstan": "^1.12 || ^2",
+                "phpstan/phpstan-strict-rules": "^1 || ^2",
+                "phpunit/phpunit": "^8 || ^9"
+            },
+            "type": "library",
+            "extra": {
+                "phpstan": {
+                    "includes": [
+                        "extension.neon"
+                    ]
+                },
+                "branch-alias": {
+                    "dev-main": "3.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Composer\\Pcre\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Jordi Boggiano",
+                    "email": "j.boggiano@seld.be",
+                    "homepage": "http://seld.be"
+                }
+            ],
+            "description": "PCRE wrapping library that offers type-safe preg_* replacements.",
+            "keywords": [
+                "PCRE",
+                "preg",
+                "regex",
+                "regular expression"
+            ],
+            "support": {
+                "issues": "https://github.com/composer/pcre/issues",
+                "source": "https://github.com/composer/pcre/tree/3.3.2"
+            },
+            "funding": [
+                {
+                    "url": "https://packagist.com",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/composer",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/composer/composer",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2024-11-12T16:29:46+00:00"
+        },
+        {
+            "name": "daandesmedt/phpheadlesschrome",
+            "version": "v1.1.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/DaanDeSmedt/PHPHeadlessChrome.git",
+                "reference": "40c6282f49313be00d0954d5cdcc02c80c246491"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/DaanDeSmedt/PHPHeadlessChrome/zipball/40c6282f49313be00d0954d5cdcc02c80c246491",
+                "reference": "40c6282f49313be00d0954d5cdcc02c80c246491",
+                "shasum": ""
+            },
+            "require": {
+                "mikehaertl/php-shellcommand": "^1.2"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "*"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "daandesmedt\\PHPHeadlessChrome\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Daan De Smedt",
+                    "email": "daan.de.smedt@hotmail.com"
+                }
+            ],
+            "description": "A PHP wrapper for using Google Chrome Headless mode. Convert URL or HTML to a PDF / screenshot. Easy to use and OOP interfaced.",
+            "keywords": [
+                "chrome",
+                "headless",
+                "html",
+                "pdf",
+                "php",
+                "screenshots"
+            ],
+            "support": {
+                "issues": "https://github.com/DaanDeSmedt/PHPHeadlessChrome/issues",
+                "source": "https://github.com/DaanDeSmedt/PHPHeadlessChrome/tree/v1.1.2"
+            },
+            "time": "2024-06-10T12:03:05+00:00"
+        },
+        {
+            "name": "dasprid/enum",
+            "version": "1.0.7",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/DASPRiD/Enum.git",
+                "reference": "b5874fa9ed0043116c72162ec7f4fb50e02e7cce"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/DASPRiD/Enum/zipball/b5874fa9ed0043116c72162ec7f4fb50e02e7cce",
+                "reference": "b5874fa9ed0043116c72162ec7f4fb50e02e7cce",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=7.1 <9.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^7 || ^8 || ^9 || ^10 || ^11",
+                "squizlabs/php_codesniffer": "*"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "DASPRiD\\Enum\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "BSD-2-Clause"
+            ],
+            "authors": [
+                {
+                    "name": "Ben Scholzen 'DASPRiD'",
+                    "email": "mail@dasprids.de",
+                    "homepage": "https://dasprids.de/",
+                    "role": "Developer"
+                }
+            ],
+            "description": "PHP 7.1 enum implementation",
+            "keywords": [
+                "enum",
+                "map"
+            ],
+            "support": {
+                "issues": "https://github.com/DASPRiD/Enum/issues",
+                "source": "https://github.com/DASPRiD/Enum/tree/1.0.7"
+            },
+            "time": "2025-09-16T12:23:56+00:00"
         },
         {
             "name": "dflydev/dot-access-data",
@@ -507,6 +786,142 @@
                 }
             ],
             "time": "2025-03-06T22:45:56+00:00"
+        },
+        {
+            "name": "endroid/qr-code",
+            "version": "4.8.5",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/endroid/qr-code.git",
+                "reference": "0db25b506a8411a5e1644ebaa67123a6eb7b6a77"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/endroid/qr-code/zipball/0db25b506a8411a5e1644ebaa67123a6eb7b6a77",
+                "reference": "0db25b506a8411a5e1644ebaa67123a6eb7b6a77",
+                "shasum": ""
+            },
+            "require": {
+                "bacon/bacon-qr-code": "^2.0.5",
+                "php": "^8.1"
+            },
+            "conflict": {
+                "khanamiryan/qrcode-detector-decoder": "^1.0.6"
+            },
+            "require-dev": {
+                "endroid/quality": "dev-master",
+                "ext-gd": "*",
+                "khanamiryan/qrcode-detector-decoder": "^1.0.4||^2.0.2",
+                "setasign/fpdf": "^1.8.2"
+            },
+            "suggest": {
+                "ext-gd": "Enables you to write PNG images",
+                "khanamiryan/qrcode-detector-decoder": "Enables you to use the image validator",
+                "roave/security-advisories": "Makes sure package versions with known security issues are not installed",
+                "setasign/fpdf": "Enables you to use the PDF writer"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "4.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Endroid\\QrCode\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Jeroen van den Enden",
+                    "email": "info@endroid.nl"
+                }
+            ],
+            "description": "Endroid QR Code",
+            "homepage": "https://github.com/endroid/qr-code",
+            "keywords": [
+                "code",
+                "endroid",
+                "php",
+                "qr",
+                "qrcode"
+            ],
+            "support": {
+                "issues": "https://github.com/endroid/qr-code/issues",
+                "source": "https://github.com/endroid/qr-code/tree/4.8.5"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/endroid",
+                    "type": "github"
+                }
+            ],
+            "time": "2023-09-29T14:03:20+00:00"
+        },
+        {
+            "name": "ezyang/htmlpurifier",
+            "version": "v4.19.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/ezyang/htmlpurifier.git",
+                "reference": "b287d2a16aceffbf6e0295559b39662612b77fcf"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/ezyang/htmlpurifier/zipball/b287d2a16aceffbf6e0295559b39662612b77fcf",
+                "reference": "b287d2a16aceffbf6e0295559b39662612b77fcf",
+                "shasum": ""
+            },
+            "require": {
+                "php": "~5.6.0 || ~7.0.0 || ~7.1.0 || ~7.2.0 || ~7.3.0 || ~7.4.0 || ~8.0.0 || ~8.1.0 || ~8.2.0 || ~8.3.0 || ~8.4.0 || ~8.5.0"
+            },
+            "require-dev": {
+                "cerdic/css-tidy": "^1.7 || ^2.0",
+                "simpletest/simpletest": "dev-master"
+            },
+            "suggest": {
+                "cerdic/css-tidy": "If you want to use the filter 'Filter.ExtractStyleBlocks'.",
+                "ext-bcmath": "Used for unit conversion and imagecrash protection",
+                "ext-iconv": "Converts text to and from non-UTF-8 encodings",
+                "ext-tidy": "Used for pretty-printing HTML"
+            },
+            "type": "library",
+            "autoload": {
+                "files": [
+                    "library/HTMLPurifier.composer.php"
+                ],
+                "psr-0": {
+                    "HTMLPurifier": "library/"
+                },
+                "exclude-from-classmap": [
+                    "/library/HTMLPurifier/Language/"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "LGPL-2.1-or-later"
+            ],
+            "authors": [
+                {
+                    "name": "Edward Z. Yang",
+                    "email": "admin@htmlpurifier.org",
+                    "homepage": "http://ezyang.com"
+                }
+            ],
+            "description": "Standards compliant HTML filter written in PHP",
+            "homepage": "http://htmlpurifier.org/",
+            "keywords": [
+                "html"
+            ],
+            "support": {
+                "issues": "https://github.com/ezyang/htmlpurifier/issues",
+                "source": "https://github.com/ezyang/htmlpurifier/tree/v4.19.0"
+            },
+            "time": "2025-10-17T16:34:55+00:00"
         },
         {
             "name": "fruitcake/php-cors",
@@ -1052,6 +1467,1199 @@
                 }
             ],
             "time": "2025-08-22T14:27:06+00:00"
+        },
+        {
+            "name": "its404/php-puppeteer",
+            "version": "0.1.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/its404/php-puppeteer.git",
+                "reference": "bccd4c6231139c7b2138298f225b2a92291d45a0"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/its404/php-puppeteer/zipball/bccd4c6231139c7b2138298f225b2a92291d45a0",
+                "reference": "bccd4c6231139c7b2138298f225b2a92291d45a0",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=5.4.0"
+            },
+            "type": "php-wrapper",
+            "autoload": {
+                "psr-4": {
+                    "Its404\\PhpPuppeteer\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "its404",
+                    "email": "benwk424@gmail.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "PHP Wrapper for Google Chrome Puppeteer",
+            "homepage": "http://github.com/its404/php-puppeteer",
+            "keywords": [
+                "pdf",
+                "php",
+                "puppeteer",
+                "screenshot"
+            ],
+            "support": {
+                "issues": "https://github.com/its404/php-puppeteer/issues",
+                "source": "https://github.com/its404/php-puppeteer/tree/0.1.1"
+            },
+            "time": "2018-01-07T10:08:47+00:00"
+        },
+        {
+            "name": "koolreport/amazing",
+            "version": "2.2.0",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:koolreport/amazing.git",
+                "reference": "818a9df6570513fb6ee5449d7c86b064a9bcab95"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://repo.koolreport.com//dist/koolreport/amazing/koolreport-amazing-818a9df6570513fb6ee5449d7c86b064a9bcab95-zip-49a12f.zip",
+                "reference": "818a9df6570513fb6ee5449d7c86b064a9bcab95",
+                "shasum": "6c8e1a49b026f49cacebd4874777fa4131dfed1f"
+            },
+            "type": "library",
+            "license": [
+                "https://www.koolreport.com/license#regular-license"
+            ],
+            "description": "Amazing Bootstrap 4 Theme For KoolReport",
+            "homepage": "https://www.koolreport.com",
+            "keywords": [
+                "PHP",
+                "mysql reporting tools",
+                "php reporting framework",
+                "php reprting tools",
+                "report theme"
+            ],
+            "time": "2023-10-17T10:19:43+00:00"
+        },
+        {
+            "name": "koolreport/apexcharts",
+            "version": "1.0.0",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:koolreport/apexcharts.git",
+                "reference": "2a5a19de96d12b4d7eef8db22467e7df30112df5"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://repo.koolreport.com//dist/koolreport/apexcharts/koolreport-apexcharts-2a5a19de96d12b4d7eef8db22467e7df30112df5-zip-074299.zip",
+                "reference": "2a5a19de96d12b4d7eef8db22467e7df30112df5",
+                "shasum": "08249c18232685935de38f028de2202625a000db"
+            },
+            "type": "library",
+            "license": [
+                "https://www.koolreport.com/license#regular-license"
+            ],
+            "description": "Provide beautiful charts for your report",
+            "homepage": "https://www.koolreport.com",
+            "keywords": [
+                "ApexCharts",
+                "Data Report",
+                "PHP",
+                "Reporting Tools"
+            ],
+            "time": "2023-09-26T09:05:59+00:00"
+        },
+        {
+            "name": "koolreport/appstack",
+            "version": "1.2.0",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:koolreport/appstack.git",
+                "reference": "d036d8225e64dfca44d5aaae49d90a3ea4994f30"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://repo.koolreport.com//dist/koolreport/appstack/koolreport-appstack-d036d8225e64dfca44d5aaae49d90a3ea4994f30-zip-d44dc6.zip",
+                "reference": "d036d8225e64dfca44d5aaae49d90a3ea4994f30",
+                "shasum": "fbfdf9fcb3180f4fe8a056862e4c730854a505af"
+            },
+            "type": "library",
+            "license": [
+                "https://www.koolreport.com/license#regular-license"
+            ],
+            "description": "Mordenizer theme for KoolReport",
+            "homepage": "https://www.koolreport.com",
+            "keywords": [
+                "PHP",
+                "Reporting Tools",
+                "modernizer theme",
+                "php theme"
+            ],
+            "time": "2023-10-17T10:20:35+00:00"
+        },
+        {
+            "name": "koolreport/barcode",
+            "version": "3.0.1",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:koolreport/barcode.git",
+                "reference": "2b986ecc78d884ec6631fbbd4fab9433c55ede03"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://repo.koolreport.com//dist/koolreport/barcode/koolreport-barcode-2b986ecc78d884ec6631fbbd4fab9433c55ede03-zip-721cdc.zip",
+                "reference": "2b986ecc78d884ec6631fbbd4fab9433c55ede03",
+                "shasum": "7a91461d2572c325a7ed2f85db2725bbddc6a7b8"
+            },
+            "require": {
+                "endroid/qr-code": "^4||^3||^2",
+                "picqer/php-barcode-generator": "^0||^2"
+            },
+            "type": "library",
+            "license": [
+                "https://www.koolreport.com/license#regular-license"
+            ],
+            "description": "Display barcode and qrcode",
+            "homepage": "https://www.koolreport.com",
+            "keywords": [
+                "PHP",
+                "barcode generator",
+                "mysql reporting tools",
+                "php reporting framework",
+                "php reprting tools",
+                "qrcode generator"
+            ],
+            "time": "2022-05-05T03:43:33+00:00"
+        },
+        {
+            "name": "koolreport/bootstrap3",
+            "version": "1.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/koolreport/bootstrap3.git",
+                "reference": "74fcd807a15e403567b72dbde331f8df5d03a4a8"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/koolreport/bootstrap3/zipball/74fcd807a15e403567b72dbde331f8df5d03a4a8",
+                "reference": "74fcd807a15e403567b72dbde331f8df5d03a4a8",
+                "shasum": ""
+            },
+            "type": "library",
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Use Twitter Bootstrap 3 to design your report",
+            "homepage": "https://www.koolreport.com",
+            "keywords": [
+                "PHP Reporting Framework",
+                "mysql reporting tools",
+                "php",
+                "php cache",
+                "php reprting tools"
+            ],
+            "support": {
+                "issues": "https://github.com/koolreport/bootstrap3/issues",
+                "source": "https://github.com/koolreport/bootstrap3/tree/master"
+            },
+            "time": "2019-06-03T13:30:30+00:00"
+        },
+        {
+            "name": "koolreport/bootstrap4",
+            "version": "1.5.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/koolreport/bootstrap4.git",
+                "reference": "97b2d14179d9332bde41cda6ebe3306cf213ba44"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/koolreport/bootstrap4/zipball/97b2d14179d9332bde41cda6ebe3306cf213ba44",
+                "reference": "97b2d14179d9332bde41cda6ebe3306cf213ba44",
+                "shasum": ""
+            },
+            "type": "library",
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Bootstrap 4 Theme For KoolReport",
+            "homepage": "https://www.koolreport.com",
+            "keywords": [
+                "PHP Reporting Framework",
+                "mysql reporting tools",
+                "php",
+                "php reprting tools",
+                "report theme"
+            ],
+            "support": {
+                "issues": "https://github.com/koolreport/bootstrap4/issues",
+                "source": "https://github.com/koolreport/bootstrap4/tree/v1.5.1"
+            },
+            "time": "2023-03-29T09:14:29+00:00"
+        },
+        {
+            "name": "koolreport/cache",
+            "version": "1.2.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/koolreport/cache.git",
+                "reference": "0191e1622535efbd541b81f3fd481cf092fc637d"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/koolreport/cache/zipball/0191e1622535efbd541b81f3fd481cf092fc637d",
+                "reference": "0191e1622535efbd541b81f3fd481cf092fc637d",
+                "shasum": ""
+            },
+            "type": "library",
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Use cache to make your report faster",
+            "homepage": "https://www.koolreport.com",
+            "keywords": [
+                "PHP Reporting Framework",
+                "mysql reporting tools",
+                "php",
+                "php cache",
+                "php reprting tools"
+            ],
+            "support": {
+                "issues": "https://github.com/koolreport/cache/issues",
+                "source": "https://github.com/koolreport/cache/tree/master"
+            },
+            "time": "2019-06-03T07:56:43+00:00"
+        },
+        {
+            "name": "koolreport/chartjs",
+            "version": "3.2.1",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:koolreport/chartjs.git",
+                "reference": "282b1a157d60c14223831cb13d9159baa291c983"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://repo.koolreport.com//dist/koolreport/chartjs/koolreport-chartjs-282b1a157d60c14223831cb13d9159baa291c983-zip-0aab88.zip",
+                "reference": "282b1a157d60c14223831cb13d9159baa291c983",
+                "shasum": "5302af0e0965dec8586349e1db05e907789df923"
+            },
+            "type": "library",
+            "license": [
+                "https://www.koolreport.com/license#regular-license"
+            ],
+            "description": "Provide beautiful charts for your report",
+            "homepage": "https://www.koolreport.com",
+            "keywords": [
+                "ChartJs",
+                "Data Report",
+                "PHP",
+                "Reporting Tools"
+            ],
+            "time": "2023-03-29T09:15:12+00:00"
+        },
+        {
+            "name": "koolreport/charttable",
+            "version": "1.3.1",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:koolreport/charttable.git",
+                "reference": "9012a8223c64061b98c0cce8fd09a482ef287fdd"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://repo.koolreport.com//dist/koolreport/charttable/koolreport-charttable-9012a8223c64061b98c0cce8fd09a482ef287fdd-zip-8adfaf.zip",
+                "reference": "9012a8223c64061b98c0cce8fd09a482ef287fdd",
+                "shasum": "13d51a6416d4cb23a0a1bdc55690bf6492cc0162"
+            },
+            "type": "library",
+            "license": [
+                "https://www.koolreport.com/license#regular-license"
+            ],
+            "authors": [
+                {
+                    "name": "KoolPHP Inc",
+                    "homepage": "https://www.koolphp.net"
+                }
+            ],
+            "description": "Chart and table",
+            "homepage": "https://www.koolreport.com",
+            "keywords": [
+                "Data Report",
+                "PHP",
+                "Reporting Tools",
+                "chart",
+                "table"
+            ],
+            "time": "2023-03-29T09:16:00+00:00"
+        },
+        {
+            "name": "koolreport/cleandata",
+            "version": "1.6.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/koolreport/cleandata.git",
+                "reference": "a596d1938d4782376e5e262850cf5ba52f96cad4"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/koolreport/cleandata/zipball/a596d1938d4782376e5e262850cf5ba52f96cad4",
+                "reference": "a596d1938d4782376e5e262850cf5ba52f96cad4",
+                "shasum": ""
+            },
+            "type": "library",
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Solve the missing data",
+            "homepage": "https://www.koolreport.com",
+            "keywords": [
+                "Data Cleaning",
+                "Data Report",
+                "Missing Data",
+                "Reporting Tools",
+                "php"
+            ],
+            "support": {
+                "issues": "https://github.com/koolreport/cleandata/issues",
+                "source": "https://github.com/koolreport/cleandata/tree/v1.6.1"
+            },
+            "time": "2023-03-29T09:16:39+00:00"
+        },
+        {
+            "name": "koolreport/cloudexport",
+            "version": "4.2.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/koolreport/cloudexport.git",
+                "reference": "c2de229723118bbd9ca411de5bbe4ac82b741b27"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/koolreport/cloudexport/zipball/c2de229723118bbd9ca411de5bbe4ac82b741b27",
+                "reference": "c2de229723118bbd9ca411de5bbe4ac82b741b27",
+                "shasum": ""
+            },
+            "require": {
+                "chromeheadlessio/php-client": "^1"
+            },
+            "type": "library",
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Export to pdf, image using chromeheadless.io's cloud export service",
+            "homepage": "https://www.koolreport.com",
+            "keywords": [
+                "Data Report",
+                "Reporting Tools",
+                "cloud export service",
+                "jpg png export",
+                "pdf export",
+                "php"
+            ],
+            "support": {
+                "issues": "https://github.com/koolreport/cloudexport/issues",
+                "source": "https://github.com/koolreport/cloudexport/tree/v4.2.0"
+            },
+            "time": "2023-03-29T08:33:26+00:00"
+        },
+        {
+            "name": "koolreport/codeigniter",
+            "version": "1.8.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/koolreport/codeigniter.git",
+                "reference": "d4ffd37c1792b3d11b701a54927ad11571569470"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/koolreport/codeigniter/zipball/d4ffd37c1792b3d11b701a54927ad11571569470",
+                "reference": "d4ffd37c1792b3d11b701a54927ad11571569470",
+                "shasum": ""
+            },
+            "type": "library",
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Allow to use KoolReport seamlessly in CodeIgniter",
+            "homepage": "https://www.koolreport.com",
+            "keywords": [
+                "CodeIgniter Report",
+                "Data Report",
+                "KooLReport CodeIgniter",
+                "Reporting Tools",
+                "codeIgniter reporting",
+                "codeIgniter reporting tool",
+                "laravel",
+                "php"
+            ],
+            "support": {
+                "issues": "https://github.com/koolreport/codeigniter/issues",
+                "source": "https://github.com/koolreport/codeigniter/tree/master"
+            },
+            "time": "2019-06-03T08:10:35+00:00"
+        },
+        {
+            "name": "koolreport/core",
+            "version": "6.2.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/koolreport/core.git",
+                "reference": "7cf23aabc30b1ab377178dbd2e74d2e92380022f"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/koolreport/core/zipball/7cf23aabc30b1ab377178dbd2e74d2e92380022f",
+                "reference": "7cf23aabc30b1ab377178dbd2e74d2e92380022f",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=5.4"
+            },
+            "type": "library",
+            "autoload": {
+                "files": [
+                    "autoload.php"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "KoolPHP Inc",
+                    "homepage": "https://www.koolphp.net"
+                }
+            ],
+            "description": "An Open Source PHP Reporting Framework for easier and faster report delivery.",
+            "homepage": "https://www.koolreport.com",
+            "keywords": [
+                "PHP Reporting Framework",
+                "PHP Reporting Tools",
+                "charts and graphs",
+                "data processing",
+                "data visualization"
+            ],
+            "support": {
+                "issues": "https://github.com/koolreport/core/issues",
+                "source": "https://github.com/koolreport/core/tree/v6.2.0"
+            },
+            "time": "2023-09-11T09:53:18+00:00"
+        },
+        {
+            "name": "koolreport/cube",
+            "version": "3.5.1",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:koolreport/cube.git",
+                "reference": "4636b78e33fd0e608600583fbc16a9b94a33112c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://repo.koolreport.com//dist/koolreport/cube/koolreport-cube-4636b78e33fd0e608600583fbc16a9b94a33112c-zip-1edc97.zip",
+                "reference": "4636b78e33fd0e608600583fbc16a9b94a33112c",
+                "shasum": "ff791f317ee19d783b1a72fdb634c987a967f163"
+            },
+            "type": "library",
+            "license": [
+                "https://www.koolreport.com/license#regular-license"
+            ],
+            "authors": [
+                {
+                    "name": "KoolPHP Inc",
+                    "homepage": "https://www.koolphp.net"
+                }
+            ],
+            "description": "Cube package for KoolReport - summarize data in crosstab",
+            "homepage": "http://koolreport.com",
+            "keywords": [
+                "Charts",
+                "Data Report",
+                "PHP",
+                "Pivot table",
+                "Reporting Tools",
+                "crosstab"
+            ],
+            "time": "2023-03-29T09:18:58+00:00"
+        },
+        {
+            "name": "koolreport/d3",
+            "version": "1.6.0",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:koolreport/d3.git",
+                "reference": "f1c2560b9acaa383658eeeda27ce264447892436"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://repo.koolreport.com//dist/koolreport/d3/koolreport-d3-f1c2560b9acaa383658eeeda27ce264447892436-zip-d9fb8c.zip",
+                "reference": "f1c2560b9acaa383658eeeda27ce264447892436",
+                "shasum": "8029643af3ed4dc7089c906c45b1141a8ff9246b"
+            },
+            "type": "library",
+            "license": [
+                "https://www.koolreport.com/license#mit-license"
+            ],
+            "description": "D3-based reusable chart library for KoolReport",
+            "homepage": "https://www.koolreport.com",
+            "keywords": [
+                "PHP",
+                "chart",
+                "column chart",
+                "graph",
+                "line chart",
+                "php reporting framework",
+                "php reprting tools",
+                "pie chart"
+            ],
+            "time": "2021-07-07T08:23:16+00:00"
+        },
+        {
+            "name": "koolreport/datagrid",
+            "version": "7.9.0",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:koolreport/datagrid.git",
+                "reference": "780b04a5e2a0944f0aa15ccbd98c20ab4bb8e0ef"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://repo.koolreport.com//dist/koolreport/datagrid/koolreport-datagrid-780b04a5e2a0944f0aa15ccbd98c20ab4bb8e0ef-zip-a78a6b.zip",
+                "reference": "780b04a5e2a0944f0aa15ccbd98c20ab4bb8e0ef",
+                "shasum": "fb4072e59507c42421aee577f9230e99cf5d4a72"
+            },
+            "type": "library",
+            "license": [
+                "https://www.koolreport.com/license#regular-license"
+            ],
+            "description": "Display data in grid",
+            "homepage": "https://www.koolreport.com",
+            "keywords": [
+                "Charts",
+                "Data Grid",
+                "Data Report",
+                "PHP",
+                "Reporting Tools"
+            ],
+            "time": "2023-09-11T09:55:15+00:00"
+        },
+        {
+            "name": "koolreport/drilldown",
+            "version": "3.5.0",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:koolreport/drilldown.git",
+                "reference": "79fb86560f54bc4c6d465e82d00c537dc6f721d5"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://repo.koolreport.com//dist/koolreport/drilldown/koolreport-drilldown-79fb86560f54bc4c6d465e82d00c537dc6f721d5-zip-5422a3.zip",
+                "reference": "79fb86560f54bc4c6d465e82d00c537dc6f721d5",
+                "shasum": "6c9d4cee115f39f65cf99f183f8a70b7b5f106c6"
+            },
+            "type": "library",
+            "license": [
+                "https://www.koolphp.net/license-agreement"
+            ],
+            "description": "Create drill-down and drill-though report",
+            "homepage": "https://www.koolreport.com",
+            "keywords": [
+                "Data Report",
+                "Drill Down Report",
+                "Drill Through Repeort",
+                "PHP",
+                "Reporting Tools"
+            ],
+            "time": "2021-07-07T07:52:50+00:00"
+        },
+        {
+            "name": "koolreport/excel",
+            "version": "10.7.0",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:koolreport/excel.git",
+                "reference": "6238aba09fc9498525233f959dcde828e3758720"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://repo.koolreport.com//dist/koolreport/excel/koolreport-excel-6238aba09fc9498525233f959dcde828e3758720-zip-0f7eb8.zip",
+                "reference": "6238aba09fc9498525233f959dcde828e3758720",
+                "shasum": "be7cf75dcfce2fcc180fcdc106544d2bcc0a7150"
+            },
+            "require": {
+                "koolreport/spout": "^3",
+                "php": ">=7.1.0",
+                "phpoffice/phpspreadsheet": "^1"
+            },
+            "type": "library",
+            "license": [
+                "https://www.koolreport.com/license#mit-license"
+            ],
+            "description": "Allow KoolReport to connect to Excel and export to excel file",
+            "homepage": "https://www.koolreport.com",
+            "keywords": [
+                "Charts",
+                "Data Report",
+                "Export to Excel",
+                "Exporting",
+                "Microsoft Excel",
+                "PHP",
+                "Reporting Tools",
+                "XLS"
+            ],
+            "time": "2023-09-25T07:47:30+00:00"
+        },
+        {
+            "name": "koolreport/export",
+            "version": "5.4.0",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:koolreport/export.git",
+                "reference": "9203bc6da46201ed8ecff9d07c1ca2e404e1bba6"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://repo.koolreport.com//dist/koolreport/export/koolreport-export-9203bc6da46201ed8ecff9d07c1ca2e404e1bba6-zip-6dd25f.zip",
+                "reference": "9203bc6da46201ed8ecff9d07c1ca2e404e1bba6",
+                "shasum": "8cb72ce3376cf8116fae0f4aded01eb2de21668d"
+            },
+            "require": {
+                "daandesmedt/phpheadlesschrome": "*",
+                "its404/php-puppeteer": "^0.1.1"
+            },
+            "type": "library",
+            "license": [
+                "https://www.koolreport.com/license#regular-license"
+            ],
+            "authors": [
+                {
+                    "name": "KoolPHP Inc",
+                    "homepage": "https://www.koolphp.net"
+                }
+            ],
+            "description": "Allow KoolReport to export to PDF and other formats",
+            "homepage": "https://www.koolreport.com",
+            "keywords": [
+                "Charts",
+                "Data Report",
+                "Export HTML to PDF",
+                "Exporting",
+                "PDF",
+                "PHP",
+                "Reporting Tools"
+            ],
+            "time": "2023-09-21T07:02:36+00:00"
+        },
+        {
+            "name": "koolreport/inputs",
+            "version": "6.3.0",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:koolreport/inputs.git",
+                "reference": "9d2072c697d2cc27917fa9145d09de4f8b9fd574"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://repo.koolreport.com//dist/koolreport/inputs/koolreport-inputs-9d2072c697d2cc27917fa9145d09de4f8b9fd574-zip-0cdba5.zip",
+                "reference": "9d2072c697d2cc27917fa9145d09de4f8b9fd574",
+                "shasum": "05895c6ad318ff8f01680f418974dd41b5a1c47c"
+            },
+            "type": "library",
+            "license": [
+                "https://www.koolreport.com/license#regular-license"
+            ],
+            "description": "Allow adding inputs into reports",
+            "homepage": "https://www.koolreport.com",
+            "keywords": [
+                "Data Report",
+                "PHP",
+                "Report input",
+                "Reporting Tools"
+            ],
+            "time": "2023-09-21T07:03:05+00:00"
+        },
+        {
+            "name": "koolreport/instant",
+            "version": "3.7.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/koolreport/instant.git",
+                "reference": "a14127d7d4b29d62993fd41b1d9a3dc21420b5da"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/koolreport/instant/zipball/a14127d7d4b29d62993fd41b1d9a3dc21420b5da",
+                "reference": "a14127d7d4b29d62993fd41b1d9a3dc21420b5da",
+                "shasum": ""
+            },
+            "type": "library",
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Allow rendering widget instantly",
+            "homepage": "https://www.koolreport.com",
+            "keywords": [
+                "Data Report",
+                "Instant Report",
+                "Reporting Tools",
+                "php"
+            ],
+            "support": {
+                "issues": "https://github.com/koolreport/instant/issues",
+                "source": "https://github.com/koolreport/instant/tree/v3.7.0"
+            },
+            "time": "2020-11-10T10:38:45+00:00"
+        },
+        {
+            "name": "koolreport/laravel",
+            "version": "2.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/koolreport/laravel.git",
+                "reference": "b6918a3ae7c72d4a4c814691f716f257c9d2a784"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/koolreport/laravel/zipball/b6918a3ae7c72d4a4c814691f716f257c9d2a784",
+                "reference": "b6918a3ae7c72d4a4c814691f716f257c9d2a784",
+                "shasum": ""
+            },
+            "type": "library",
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Allow to use KoolReport seamlessly in Laravel",
+            "homepage": "https://www.koolreport.com",
+            "keywords": [
+                "Data Report",
+                "KooLReport Laravel",
+                "Laravel Report",
+                "Reporting Tools",
+                "laravel",
+                "laravel reporting",
+                "laravel reporting tool",
+                "php"
+            ],
+            "support": {
+                "issues": "https://github.com/koolreport/laravel/issues",
+                "source": "https://github.com/koolreport/laravel/tree/master"
+            },
+            "time": "2020-01-21T07:25:24+00:00"
+        },
+        {
+            "name": "koolreport/morris_chart",
+            "version": "3.0.1",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:koolreport/morris_chart.git",
+                "reference": "e757dcd5395984a9f91879896d0983d77741572f"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://repo.koolreport.com//dist/koolreport/morris_chart/koolreport-morris_chart-e757dcd5395984a9f91879896d0983d77741572f-zip-e33468.zip",
+                "reference": "e757dcd5395984a9f91879896d0983d77741572f",
+                "shasum": "a45750c4e9565134eb61409b93cdeae92ca9a19a"
+            },
+            "type": "library",
+            "license": [
+                "https://www.koolreport.com/license#regular-license"
+            ],
+            "authors": [
+                {
+                    "name": "KoolPHP Inc",
+                    "homepage": "https://www.koolphp.net"
+                }
+            ],
+            "description": "Widget wrapper to draw Morris js chart",
+            "homepage": "https://www.koolreport.com",
+            "keywords": [
+                "Charts",
+                "Data Report",
+                "Morris JS",
+                "PHP",
+                "Reporting Tools"
+            ],
+            "time": "2023-03-29T09:28:36+00:00"
+        },
+        {
+            "name": "koolreport/pivot",
+            "version": "9.1.0",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:koolreport/pivot.git",
+                "reference": "eff777940e67ca1e8316a7ef105d56fb34c46bcc"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://repo.koolreport.com//dist/koolreport/pivot/koolreport-pivot-eff777940e67ca1e8316a7ef105d56fb34c46bcc-zip-e8f6e3.zip",
+                "reference": "eff777940e67ca1e8316a7ef105d56fb34c46bcc",
+                "shasum": "e27bbc61f95879c3d99cc8e7cc6729e0b064288d"
+            },
+            "type": "library",
+            "license": [
+                "https://www.koolreport.com/license#regular-license"
+            ],
+            "authors": [
+                {
+                    "name": "KoolPHP Inc",
+                    "homepage": "https://www.koolphp.net"
+                }
+            ],
+            "description": "Pivot package for KoolReport",
+            "homepage": "http://koolreport.com",
+            "keywords": [
+                "Charts",
+                "Data Report",
+                "PHP",
+                "Pivot table",
+                "Reporting Tools"
+            ],
+            "time": "2023-09-21T07:03:29+00:00"
+        },
+        {
+            "name": "koolreport/pro",
+            "version": "6.3.1",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:koolreport/pro.git",
+                "reference": "9dd618739c659a75c73fc18637d9e4b5f71f75fe"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://repo.koolreport.com//dist/koolreport/pro/koolreport-pro-9dd618739c659a75c73fc18637d9e4b5f71f75fe-zip-1da982.zip",
+                "reference": "9dd618739c659a75c73fc18637d9e4b5f71f75fe",
+                "shasum": "d94e966a965e2a18ce8b847c16bdbd20094a43ad"
+            },
+            "require": {
+                "koolreport/amazing": "2.2.0",
+                "koolreport/apexcharts": "1.0.0",
+                "koolreport/appstack": "1.2.0",
+                "koolreport/barcode": "2.1.0||3.0.1",
+                "koolreport/bootstrap3": "1.1.0",
+                "koolreport/bootstrap4": "1.5.1",
+                "koolreport/cache": "1.2.0",
+                "koolreport/chartjs": "3.2.1",
+                "koolreport/charttable": "1.3.1",
+                "koolreport/cleandata": "1.6.1",
+                "koolreport/cloudexport": "4.2.0",
+                "koolreport/codeigniter": "1.8.0",
+                "koolreport/core": "6.2.0",
+                "koolreport/cube": "3.5.1",
+                "koolreport/d3": "1.6.0",
+                "koolreport/datagrid": "7.9.0",
+                "koolreport/drilldown": "3.5.0",
+                "koolreport/excel": "10.7.0",
+                "koolreport/export": "5.4.0",
+                "koolreport/inputs": "6.3.0",
+                "koolreport/instant": "3.7.0",
+                "koolreport/laravel": "2.0.0",
+                "koolreport/morris_chart": "3.0.1",
+                "koolreport/pivot": "9.1.0",
+                "koolreport/querybuilder": "3.4.0",
+                "koolreport/sparklines": "1.5.0",
+                "koolreport/statistics": "1.2.0",
+                "koolreport/visualquery": "2.5.0",
+                "koolreport/yii2": "1.0.0",
+                "php": ">=5.4"
+            },
+            "type": "library",
+            "license": [
+                "https://www.koolreport.com/license#developer-license"
+            ],
+            "authors": [
+                {
+                    "name": "KoolPHP Inc",
+                    "homepage": "https://www.koolphp.net"
+                }
+            ],
+            "description": "An Open Source PHP Reporting Framework for easier and faster report delivery.",
+            "homepage": "https://www.koolreport.com",
+            "keywords": [
+                "charts and graphs",
+                "data processing",
+                "data visualization",
+                "php reporting framework",
+                "php reporting tools"
+            ],
+            "time": "2023-10-17T10:23:46+00:00"
+        },
+        {
+            "name": "koolreport/querybuilder",
+            "version": "3.4.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/koolreport/querybuilder.git",
+                "reference": "aabec06c5a22db6a4a62b6e9c74b00a7f32ba466"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/koolreport/querybuilder/zipball/aabec06c5a22db6a4a62b6e9c74b00a7f32ba466",
+                "reference": "aabec06c5a22db6a4a62b6e9c74b00a7f32ba466",
+                "shasum": ""
+            },
+            "type": "library",
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Create query by php code",
+            "homepage": "https://www.koolreport.com",
+            "keywords": [
+                "PHP Reporting Framework",
+                "charts",
+                "graphs",
+                "mysql reporting tools",
+                "php",
+                "php reprting tools",
+                "query builder",
+                "sql query generator"
+            ],
+            "support": {
+                "issues": "https://github.com/koolreport/querybuilder/issues",
+                "source": "https://github.com/koolreport/querybuilder/tree/v3.4.0"
+            },
+            "time": "2023-09-27T09:35:41+00:00"
+        },
+        {
+            "name": "koolreport/sparklines",
+            "version": "1.5.0",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:koolreport/sparklines.git",
+                "reference": "76f2977abd1246b430b0d38928e680c2ba7c2e4f"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://repo.koolreport.com//dist/koolreport/sparklines/koolreport-sparklines-76f2977abd1246b430b0d38928e680c2ba7c2e4f-zip-365359.zip",
+                "reference": "76f2977abd1246b430b0d38928e680c2ba7c2e4f",
+                "shasum": "103e88d3818f93b7931a8b863b6ca2d62a0c54e5"
+            },
+            "type": "library",
+            "license": [
+                "https://www.koolreport.com/license#regular-license"
+            ],
+            "description": "Contains sparklines chart types",
+            "homepage": "https://www.koolreport.com",
+            "keywords": [
+                "PHP",
+                "charts",
+                "graphs",
+                "mysql reporting tools",
+                "php reporting framework",
+                "php reprting tools",
+                "sparkines"
+            ],
+            "time": "2019-05-08T11:32:29+00:00"
+        },
+        {
+            "name": "koolreport/spout",
+            "version": "3.4.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/koolreport/spout.git",
+                "reference": "7abe5ca8c0efe835f20079259295df38c0816ad5"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/koolreport/spout/zipball/7abe5ca8c0efe835f20079259295df38c0816ad5",
+                "reference": "7abe5ca8c0efe835f20079259295df38c0816ad5",
+                "shasum": ""
+            },
+            "require": {
+                "ext-dom": "*",
+                "ext-xmlreader": "*",
+                "ext-zip": "*",
+                "php": ">=7.2.0"
+            },
+            "require-dev": {
+                "friendsofphp/php-cs-fixer": "*",
+                "phpstan/phpstan": "*",
+                "phpunit/phpunit": "*"
+            },
+            "suggest": {
+                "ext-iconv": "To handle non UTF-8 CSV files (if \"php-intl\" is not already installed or is too limited)",
+                "ext-intl": "To handle non UTF-8 CSV files (if \"iconv\" is not already installed)"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "3.4.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "koolreport\\Spout\\": "."
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "Apache-2.0"
+            ],
+            "authors": [
+                {
+                    "name": "KoolReport",
+                    "email": "support@koolreport.com"
+                },
+                {
+                    "name": "Adrien Loison",
+                    "email": "adrien@box.com"
+                }
+            ],
+            "description": "PHP Library to read and write spreadsheet files (CSV, XLSX and ODS), in a fast and scalable way",
+            "homepage": "https://www.github.com/box/spout",
+            "keywords": [
+                "OOXML",
+                "csv",
+                "excel",
+                "memory",
+                "odf",
+                "ods",
+                "office",
+                "open",
+                "php",
+                "read",
+                "scale",
+                "spreadsheet",
+                "stream",
+                "write",
+                "xlsx"
+            ],
+            "support": {
+                "source": "https://github.com/koolreport/spout/tree/v3.4.1"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/adrilo",
+                    "type": "github"
+                }
+            ],
+            "time": "2025-09-08T07:27:55+00:00"
+        },
+        {
+            "name": "koolreport/statistics",
+            "version": "1.2.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/koolreport/statistics.git",
+                "reference": "ff1b3789d53c8502cb1e05d960164809afc53e83"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/koolreport/statistics/zipball/ff1b3789d53c8502cb1e05d960164809afc53e83",
+                "reference": "ff1b3789d53c8502cb1e05d960164809afc53e83",
+                "shasum": ""
+            },
+            "type": "library",
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Provide various statistical measures for data",
+            "homepage": "https://www.koolreport.com",
+            "keywords": [
+                "PHP Reporting Framework",
+                "lowerQuartile",
+                "max",
+                "mean",
+                "meanDeviation",
+                "median",
+                "min",
+                "mode",
+                "mysql reporting tools",
+                "percentile",
+                "php",
+                "php reprting tools",
+                "statistics",
+                "stdDeviation",
+                "upperQuartile"
+            ],
+            "support": {
+                "issues": "https://github.com/koolreport/statistics/issues",
+                "source": "https://github.com/koolreport/statistics/tree/master"
+            },
+            "time": "2019-07-01T08:16:03+00:00"
+        },
+        {
+            "name": "koolreport/visualquery",
+            "version": "2.5.0",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:koolreport/visualquery.git",
+                "reference": "544ed5ecd97612890a409406ea72fdfd33222779"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://repo.koolreport.com//dist/koolreport/visualquery/koolreport-visualquery-544ed5ecd97612890a409406ea72fdfd33222779-zip-08ab3a.zip",
+                "reference": "544ed5ecd97612890a409406ea72fdfd33222779",
+                "shasum": "d181e855b40f4c79d4cb69116b357937be79d388"
+            },
+            "type": "library",
+            "license": [
+                "https://www.koolreport.com/license#regular-license"
+            ],
+            "authors": [
+                {
+                    "name": "KoolPHP Inc",
+                    "homepage": "https://www.koolphp.net"
+                }
+            ],
+            "description": "Create query by using UI",
+            "homepage": "https://www.koolreport.com",
+            "keywords": [
+                "Data Report",
+                "PHP",
+                "Reporting Tools",
+                "query builder",
+                "visual query"
+            ],
+            "time": "2023-09-18T07:03:52+00:00"
+        },
+        {
+            "name": "koolreport/yii2",
+            "version": "1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/koolreport/yii2.git",
+                "reference": "4398b666089f920bb39882f4a950e06702e974e2"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/koolreport/yii2/zipball/4398b666089f920bb39882f4a950e06702e974e2",
+                "reference": "4398b666089f920bb39882f4a950e06702e974e2",
+                "shasum": ""
+            },
+            "type": "library",
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Ease report setup within Yii2 environment",
+            "homepage": "https://www.koolreport.com",
+            "keywords": [
+                "PHP Reporting Framework",
+                "php",
+                "php reprting tools",
+                "yii reporting",
+                "yii2"
+            ],
+            "support": {
+                "issues": "https://github.com/koolreport/yii2/issues",
+                "source": "https://github.com/koolreport/yii2/tree/v1.0.0"
+            },
+            "time": "2020-01-17T10:25:04+00:00"
         },
         {
             "name": "laravel/framework",
@@ -1903,20 +3511,20 @@
         },
         {
             "name": "league/uri",
-            "version": "7.8.0",
+            "version": "7.8.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/thephpleague/uri.git",
-                "reference": "4436c6ec8d458e4244448b069cc572d088230b76"
+                "reference": "08cf38e3924d4f56238125547b5720496fac8fd4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/thephpleague/uri/zipball/4436c6ec8d458e4244448b069cc572d088230b76",
-                "reference": "4436c6ec8d458e4244448b069cc572d088230b76",
+                "url": "https://api.github.com/repos/thephpleague/uri/zipball/08cf38e3924d4f56238125547b5720496fac8fd4",
+                "reference": "08cf38e3924d4f56238125547b5720496fac8fd4",
                 "shasum": ""
             },
             "require": {
-                "league/uri-interfaces": "^7.8",
+                "league/uri-interfaces": "^7.8.1",
                 "php": "^8.1",
                 "psr/http-factory": "^1"
             },
@@ -1989,7 +3597,7 @@
                 "docs": "https://uri.thephpleague.com",
                 "forum": "https://thephpleague.slack.com",
                 "issues": "https://github.com/thephpleague/uri-src/issues",
-                "source": "https://github.com/thephpleague/uri/tree/7.8.0"
+                "source": "https://github.com/thephpleague/uri/tree/7.8.1"
             },
             "funding": [
                 {
@@ -1997,20 +3605,20 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-01-14T17:24:56+00:00"
+            "time": "2026-03-15T20:22:25+00:00"
         },
         {
             "name": "league/uri-interfaces",
-            "version": "7.8.0",
+            "version": "7.8.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/thephpleague/uri-interfaces.git",
-                "reference": "c5c5cd056110fc8afaba29fa6b72a43ced42acd4"
+                "reference": "85d5c77c5d6d3af6c54db4a78246364908f3c928"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/thephpleague/uri-interfaces/zipball/c5c5cd056110fc8afaba29fa6b72a43ced42acd4",
-                "reference": "c5c5cd056110fc8afaba29fa6b72a43ced42acd4",
+                "url": "https://api.github.com/repos/thephpleague/uri-interfaces/zipball/85d5c77c5d6d3af6c54db4a78246364908f3c928",
+                "reference": "85d5c77c5d6d3af6c54db4a78246364908f3c928",
                 "shasum": ""
             },
             "require": {
@@ -2073,7 +3681,7 @@
                 "docs": "https://uri.thephpleague.com",
                 "forum": "https://thephpleague.slack.com",
                 "issues": "https://github.com/thephpleague/uri-src/issues",
-                "source": "https://github.com/thephpleague/uri-interfaces/tree/7.8.0"
+                "source": "https://github.com/thephpleague/uri-interfaces/tree/7.8.1"
             },
             "funding": [
                 {
@@ -2081,7 +3689,238 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-01-15T06:54:53+00:00"
+            "time": "2026-03-08T20:05:35+00:00"
+        },
+        {
+            "name": "maennchen/zipstream-php",
+            "version": "3.1.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/maennchen/ZipStream-PHP.git",
+                "reference": "aeadcf5c412332eb426c0f9b4485f6accba2a99f"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/maennchen/ZipStream-PHP/zipball/aeadcf5c412332eb426c0f9b4485f6accba2a99f",
+                "reference": "aeadcf5c412332eb426c0f9b4485f6accba2a99f",
+                "shasum": ""
+            },
+            "require": {
+                "ext-mbstring": "*",
+                "ext-zlib": "*",
+                "php-64bit": "^8.2"
+            },
+            "require-dev": {
+                "brianium/paratest": "^7.7",
+                "ext-zip": "*",
+                "friendsofphp/php-cs-fixer": "^3.16",
+                "guzzlehttp/guzzle": "^7.5",
+                "mikey179/vfsstream": "^1.6",
+                "php-coveralls/php-coveralls": "^2.5",
+                "phpunit/phpunit": "^11.0",
+                "vimeo/psalm": "^6.0"
+            },
+            "suggest": {
+                "guzzlehttp/psr7": "^2.4",
+                "psr/http-message": "^2.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "ZipStream\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Paul Duncan",
+                    "email": "pabs@pablotron.org"
+                },
+                {
+                    "name": "Jonatan Männchen",
+                    "email": "jonatan@maennchen.ch"
+                },
+                {
+                    "name": "Jesse Donat",
+                    "email": "donatj@gmail.com"
+                },
+                {
+                    "name": "András Kolesár",
+                    "email": "kolesar@kolesar.hu"
+                }
+            ],
+            "description": "ZipStream is a library for dynamically streaming dynamic zip files from PHP without writing to the disk at all on the server.",
+            "keywords": [
+                "stream",
+                "zip"
+            ],
+            "support": {
+                "issues": "https://github.com/maennchen/ZipStream-PHP/issues",
+                "source": "https://github.com/maennchen/ZipStream-PHP/tree/3.1.2"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/maennchen",
+                    "type": "github"
+                }
+            ],
+            "time": "2025-01-27T12:07:53+00:00"
+        },
+        {
+            "name": "markbaker/complex",
+            "version": "3.0.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/MarkBaker/PHPComplex.git",
+                "reference": "95c56caa1cf5c766ad6d65b6344b807c1e8405b9"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/MarkBaker/PHPComplex/zipball/95c56caa1cf5c766ad6d65b6344b807c1e8405b9",
+                "reference": "95c56caa1cf5c766ad6d65b6344b807c1e8405b9",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.2 || ^8.0"
+            },
+            "require-dev": {
+                "dealerdirect/phpcodesniffer-composer-installer": "dev-master",
+                "phpcompatibility/php-compatibility": "^9.3",
+                "phpunit/phpunit": "^7.0 || ^8.0 || ^9.0",
+                "squizlabs/php_codesniffer": "^3.7"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Complex\\": "classes/src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Mark Baker",
+                    "email": "mark@lange.demon.co.uk"
+                }
+            ],
+            "description": "PHP Class for working with complex numbers",
+            "homepage": "https://github.com/MarkBaker/PHPComplex",
+            "keywords": [
+                "complex",
+                "mathematics"
+            ],
+            "support": {
+                "issues": "https://github.com/MarkBaker/PHPComplex/issues",
+                "source": "https://github.com/MarkBaker/PHPComplex/tree/3.0.2"
+            },
+            "time": "2022-12-06T16:21:08+00:00"
+        },
+        {
+            "name": "markbaker/matrix",
+            "version": "3.0.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/MarkBaker/PHPMatrix.git",
+                "reference": "728434227fe21be27ff6d86621a1b13107a2562c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/MarkBaker/PHPMatrix/zipball/728434227fe21be27ff6d86621a1b13107a2562c",
+                "reference": "728434227fe21be27ff6d86621a1b13107a2562c",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.1 || ^8.0"
+            },
+            "require-dev": {
+                "dealerdirect/phpcodesniffer-composer-installer": "dev-master",
+                "phpcompatibility/php-compatibility": "^9.3",
+                "phpdocumentor/phpdocumentor": "2.*",
+                "phploc/phploc": "^4.0",
+                "phpmd/phpmd": "2.*",
+                "phpunit/phpunit": "^7.0 || ^8.0 || ^9.0",
+                "sebastian/phpcpd": "^4.0",
+                "squizlabs/php_codesniffer": "^3.7"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Matrix\\": "classes/src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Mark Baker",
+                    "email": "mark@demon-angel.eu"
+                }
+            ],
+            "description": "PHP Class for working with matrices",
+            "homepage": "https://github.com/MarkBaker/PHPMatrix",
+            "keywords": [
+                "mathematics",
+                "matrix",
+                "vector"
+            ],
+            "support": {
+                "issues": "https://github.com/MarkBaker/PHPMatrix/issues",
+                "source": "https://github.com/MarkBaker/PHPMatrix/tree/3.0.1"
+            },
+            "time": "2022-12-02T22:17:43+00:00"
+        },
+        {
+            "name": "mikehaertl/php-shellcommand",
+            "version": "1.7.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/mikehaertl/php-shellcommand.git",
+                "reference": "e79ea528be155ffdec6f3bf1a4a46307bb49e545"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/mikehaertl/php-shellcommand/zipball/e79ea528be155ffdec6f3bf1a4a46307bb49e545",
+                "reference": "e79ea528be155ffdec6f3bf1a4a46307bb49e545",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">= 5.3.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": ">4.0 <=9.4"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "mikehaertl\\shellcommand\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Michael Härtl",
+                    "email": "haertl.mike@gmail.com"
+                }
+            ],
+            "description": "An object oriented interface to shell commands",
+            "keywords": [
+                "shell"
+            ],
+            "support": {
+                "issues": "https://github.com/mikehaertl/php-shellcommand/issues",
+                "source": "https://github.com/mikehaertl/php-shellcommand/tree/1.7.0"
+            },
+            "time": "2023-04-19T08:25:22+00:00"
         },
         {
             "name": "monolog/monolog",
@@ -2595,6 +4434,114 @@
             "time": "2026-02-16T23:10:27+00:00"
         },
         {
+            "name": "phpoffice/phpspreadsheet",
+            "version": "1.30.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/PHPOffice/PhpSpreadsheet.git",
+                "reference": "09cdde5e2f078b9a3358dd217e2c8cb4dac84be2"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/PHPOffice/PhpSpreadsheet/zipball/09cdde5e2f078b9a3358dd217e2c8cb4dac84be2",
+                "reference": "09cdde5e2f078b9a3358dd217e2c8cb4dac84be2",
+                "shasum": ""
+            },
+            "require": {
+                "composer/pcre": "^1||^2||^3",
+                "ext-ctype": "*",
+                "ext-dom": "*",
+                "ext-fileinfo": "*",
+                "ext-gd": "*",
+                "ext-iconv": "*",
+                "ext-libxml": "*",
+                "ext-mbstring": "*",
+                "ext-simplexml": "*",
+                "ext-xml": "*",
+                "ext-xmlreader": "*",
+                "ext-xmlwriter": "*",
+                "ext-zip": "*",
+                "ext-zlib": "*",
+                "ezyang/htmlpurifier": "^4.15",
+                "maennchen/zipstream-php": "^2.1 || ^3.0",
+                "markbaker/complex": "^3.0",
+                "markbaker/matrix": "^3.0",
+                "php": ">=7.4.0 <8.5.0",
+                "psr/simple-cache": "^1.0 || ^2.0 || ^3.0"
+            },
+            "require-dev": {
+                "dealerdirect/phpcodesniffer-composer-installer": "dev-main",
+                "doctrine/instantiator": "^1.5",
+                "dompdf/dompdf": "^1.0 || ^2.0 || ^3.0",
+                "friendsofphp/php-cs-fixer": "^3.2",
+                "mitoteam/jpgraph": "^10.3",
+                "mpdf/mpdf": "^8.1.1",
+                "phpcompatibility/php-compatibility": "^9.3",
+                "phpstan/phpstan": "^1.1",
+                "phpstan/phpstan-phpunit": "^1.0",
+                "phpunit/phpunit": "^8.5 || ^9.0",
+                "squizlabs/php_codesniffer": "^3.7",
+                "tecnickcom/tcpdf": "^6.5"
+            },
+            "suggest": {
+                "dompdf/dompdf": "Option for rendering PDF with PDF Writer",
+                "ext-intl": "PHP Internationalization Functions",
+                "mitoteam/jpgraph": "Option for rendering charts, or including charts with PDF or HTML Writers",
+                "mpdf/mpdf": "Option for rendering PDF with PDF Writer",
+                "tecnickcom/tcpdf": "Option for rendering PDF with PDF Writer"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "PhpOffice\\PhpSpreadsheet\\": "src/PhpSpreadsheet"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Maarten Balliauw",
+                    "homepage": "https://blog.maartenballiauw.be"
+                },
+                {
+                    "name": "Mark Baker",
+                    "homepage": "https://markbakeruk.net"
+                },
+                {
+                    "name": "Franck Lefevre",
+                    "homepage": "https://rootslabs.net"
+                },
+                {
+                    "name": "Erik Tilt"
+                },
+                {
+                    "name": "Adrien Crivelli"
+                },
+                {
+                    "name": "Owen Leibman"
+                }
+            ],
+            "description": "PHPSpreadsheet - Read, Create and Write Spreadsheet documents in PHP - Spreadsheet engine",
+            "homepage": "https://github.com/PHPOffice/PhpSpreadsheet",
+            "keywords": [
+                "OpenXML",
+                "excel",
+                "gnumeric",
+                "ods",
+                "php",
+                "spreadsheet",
+                "xls",
+                "xlsx"
+            ],
+            "support": {
+                "issues": "https://github.com/PHPOffice/PhpSpreadsheet/issues",
+                "source": "https://github.com/PHPOffice/PhpSpreadsheet/tree/1.30.2"
+            },
+            "time": "2026-01-11T05:58:24+00:00"
+        },
+        {
             "name": "phpoption/phpoption",
             "version": "1.9.5",
             "source": {
@@ -2668,6 +4615,93 @@
                 }
             ],
             "time": "2025-12-27T19:41:33+00:00"
+        },
+        {
+            "name": "picqer/php-barcode-generator",
+            "version": "v2.4.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/picqer/php-barcode-generator.git",
+                "reference": "e9d39681f617705492b609fc3fc58465ef88e8fd"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/picqer/php-barcode-generator/zipball/e9d39681f617705492b609fc3fc58465ef88e8fd",
+                "reference": "e9d39681f617705492b609fc3fc58465ef88e8fd",
+                "shasum": ""
+            },
+            "require": {
+                "ext-mbstring": "*",
+                "php": "^8.1"
+            },
+            "require-dev": {
+                "phpstan/phpstan": "^1.10",
+                "phpunit/phpunit": "^9.5"
+            },
+            "suggest": {
+                "ext-bcmath": "Barcode IMB (Intelligent Mail Barcode) needs bcmath extension",
+                "ext-gd": "For JPG and PNG generators, GD or Imagick is required",
+                "ext-imagick": "For JPG and PNG generators, GD or Imagick is required"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Picqer\\Barcode\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "LGPL-3.0-or-later"
+            ],
+            "authors": [
+                {
+                    "name": "Nicola Asuni",
+                    "email": "info@tecnick.com",
+                    "homepage": "http://nicolaasuni.tecnick.com"
+                },
+                {
+                    "name": "Casper Bakker",
+                    "email": "info@picqer.com",
+                    "homepage": "https://picqer.com"
+                }
+            ],
+            "description": "An easy to use, non-bloated, barcode generator in PHP. Creates SVG, PNG, JPG and HTML images from the most used 1D barcode standards.",
+            "homepage": "https://github.com/picqer/php-barcode-generator",
+            "keywords": [
+                "CODABAR",
+                "Code11",
+                "Code93",
+                "EAN13",
+                "KIX",
+                "KIXCODE",
+                "MSI",
+                "POSTNET",
+                "Pharma",
+                "Standard 2 of 5",
+                "barcode",
+                "barcode generator",
+                "code128",
+                "code39",
+                "ean",
+                "html",
+                "jpeg",
+                "jpg",
+                "php",
+                "png",
+                "svg",
+                "upc"
+            ],
+            "support": {
+                "issues": "https://github.com/picqer/php-barcode-generator/issues",
+                "source": "https://github.com/picqer/php-barcode-generator/tree/v2.4.2"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/casperbakker",
+                    "type": "github"
+                }
+            ],
+            "time": "2024-09-18T08:09:33+00:00"
         },
         {
             "name": "psr/clock",
@@ -6341,16 +8375,16 @@
         },
         {
             "name": "laravel/pint",
-            "version": "v1.28.0",
+            "version": "v1.29.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/laravel/pint.git",
-                "reference": "1feae84bf9c1649d99ba8f7b8193bf0f09f04cc9"
+                "reference": "bdec963f53172c5e36330f3a400604c69bf02d39"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/laravel/pint/zipball/1feae84bf9c1649d99ba8f7b8193bf0f09f04cc9",
-                "reference": "1feae84bf9c1649d99ba8f7b8193bf0f09f04cc9",
+                "url": "https://api.github.com/repos/laravel/pint/zipball/bdec963f53172c5e36330f3a400604c69bf02d39",
+                "reference": "bdec963f53172c5e36330f3a400604c69bf02d39",
                 "shasum": ""
             },
             "require": {
@@ -6367,8 +8401,8 @@
                 "laravel-zero/framework": "^12.0.5",
                 "mockery/mockery": "^1.6.12",
                 "nunomaduro/termwind": "^2.4.0",
-                "pestphp/pest": "^3.8.5",
-                "shipfastlabs/agent-detector": "^1.0.2"
+                "pestphp/pest": "^3.8.6",
+                "shipfastlabs/agent-detector": "^1.1.0"
             },
             "bin": [
                 "builds/pint"
@@ -6405,7 +8439,7 @@
                 "issues": "https://github.com/laravel/pint/issues",
                 "source": "https://github.com/laravel/pint"
             },
-            "time": "2026-03-10T20:37:18+00:00"
+            "time": "2026-03-12T15:51:39+00:00"
         },
         {
             "name": "laravel/sail",
