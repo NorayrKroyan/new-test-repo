@@ -121,6 +121,7 @@
           :deleting="deleting"
           :form="form"
           :stage-groups="stageGroups"
+          :error="modalErr"
           @close="closeModal"
           @save="saveRow"
           @delete="deleteCurrent"
@@ -151,6 +152,7 @@ const saving = ref(false)
 const deleting = ref(false)
 const loading = ref(false)
 const err = ref('')
+const modalErr = ref('')
 const successMessage = ref('')
 const tableWrap = ref(null)
 
@@ -197,6 +199,7 @@ function resetForm() {
 
 function clearMessages() {
   err.value = ''
+  modalErr.value = ''
   successMessage.value = ''
 }
 
@@ -388,20 +391,23 @@ function editRowById(id) {
 
 function closeModal() {
   open.value = false
+  modalErr.value = ''
 }
 
 async function saveRow() {
   saving.value = true
+  modalErr.value = ''
   err.value = ''
 
   try {
     await saveStage(buildStagePayload(), form.id)
     open.value = false
     resetForm()
+    modalErr.value = ''
     successMessage.value = 'Stage saved.'
     await loadRows()
   } catch (e) {
-    err.value = extractErrorMessage(e)
+    modalErr.value = extractErrorMessage(e)
   } finally {
     saving.value = false
   }
@@ -411,16 +417,18 @@ async function deleteCurrent() {
   if (!form.id) return
 
   deleting.value = true
+  modalErr.value = ''
   err.value = ''
 
   try {
     await deleteStage(form.id)
     open.value = false
     resetForm()
+    modalErr.value = ''
     successMessage.value = 'Stage deleted.'
     await loadRows()
   } catch (e) {
-    err.value = extractErrorMessage(e)
+    modalErr.value = extractErrorMessage(e)
   } finally {
     deleting.value = false
   }

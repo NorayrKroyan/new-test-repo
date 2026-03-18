@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
             LibertyBoxesLeadsSeeder::class,
             LeadSeeder::class,
             HaskellHaulLeadsSeeder::class,
+            QualificationScriptSeeder::class,
         ]);
     }
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Lead;
 use App\Models\Stage;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class StageController extends Controller
@@ -83,10 +84,32 @@ class StageController extends Controller
 
     private function validateStage(Request $request, ?Stage $stage = null): array
     {
-        return $request->validate([
-            'stage_name' => ['required', 'string', 'max:120'],
-            'stage_group' => ['required', 'string', 'max:120'],
-            'stage_order' => ['required', 'integer', 'min:1', 'max:999'],
-        ]);
+        $data = $request->validate(
+            [
+                'stage_name' => [
+                    'required',
+                    'string',
+                    'max:120',
+                    Rule::unique('stages', 'stage_name')
+                        ->where(function ($query) use ($request) {
+                            return $query
+                                ->where('stage_group', trim((string) $request->input('stage_group')))
+                                ->where('stage_order', (int) $request->input('stage_order'));
+                        })
+                        ->ignore($stage?->id),
+                ],
+                'stage_group' => ['required', 'string', 'max:120'],
+                'stage_order' => ['required', 'integer', 'min:1', 'max:999'],
+            ],
+            [
+                'stage_name.unique' => 'This exact stage name, group, and order combination already exists.',
+            ]
+        );
+
+        return [
+            'stage_name' => trim((string) $data['stage_name']),
+            'stage_group' => trim((string) $data['stage_group']),
+            'stage_order' => (int) $data['stage_order'],
+        ];
     }
 }

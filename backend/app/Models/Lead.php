@@ -83,6 +83,11 @@ class Lead extends Model
         return $this->belongsTo(Stage::class, 'lead_stage_id');
     }
 
+    public function qualificationSessions()
+    {
+        return $this->hasMany(LeadCallSession::class)->latest('id');
+    }
+
     public static function normalizePhone(?string $value): ?string
     {
         $value = trim((string) $value);

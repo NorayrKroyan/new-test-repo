@@ -66,6 +66,7 @@
             >
               {{ deduping ? 'Deduping...' : 'Auto Dedup' }}
             </button>
+
             <button
                 class="h-10 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white"
                 @click="openCreate"
@@ -91,7 +92,7 @@
       </div>
 
       <div
-          v-if="funnelEnabled && showFunnel"
+          v-if="funnelEnabled && showFunnel && !open && !isFrameView"
           class="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
       >
         <div class="mb-2 text-sm font-semibold text-slate-900">Lead Funnel</div>
@@ -237,9 +238,20 @@
           :deleting="deleting"
           :form="form"
           :stages="stages"
+          :qualification-loading="qualificationLoading"
+          :qualification-saving="qualificationSaving"
+          :qualification-applying="qualificationApplying"
+          :qualification-session="qualificationSession"
+          :qualification-history-session="qualificationHistorySession"
+          :qualification-form="qualificationForm"
+          :qualification-error="qualificationError"
           @close="closeModal"
           @save="saveRow"
           @delete="deleteCurrent"
+          @qualify="reloadQualificationNow"
+          @save-answer="saveQualificationAnswerNow"
+          @complete-qualification="completeQualificationNow"
+          @apply-recommended-stage="applyQualificationStageNow"
       />
 
       <LeadDuplicateModal
@@ -279,17 +291,22 @@ import LeadModal from '../../components/admin/LeadModal.vue'
 import LeadDuplicateModal from '../../components/admin/LeadDuplicateModal.vue'
 import LeadMergeModal from '../../components/admin/LeadMergeModal.vue'
 import {
+  applyLeadQualificationStage,
+  completeLeadQualificationSession,
   convertLeadToCarrier,
   deleteLead,
   fetchLeadAdNames,
   fetchLeadFunnelSummary,
   fetchLeadMergePreview,
+  fetchLeadQualificationSessions,
   fetchLeads,
   fetchStages,
   markLeadDuplicate,
   mergeLeadGroup,
   runLeadAutoDedup,
   saveLead,
+  saveLeadQualificationAnswer,
+  startLeadQualification,
   unmarkLeadDuplicate,
 } from '../../api/admin'
 
@@ -334,11 +351,27 @@ const mergeSaving = ref(false)
 const mergeRowId = ref(null)
 const mergePreview = ref(null)
 
+const qualificationLoading = ref(false)
+const qualificationSaving = ref(false)
+const qualificationApplying = ref(false)
+const qualificationError = ref('')
+const qualificationSession = ref(null)
+const qualificationHistorySession = ref(null)
+
+const qualificationForm = reactive({
+  step_id: null,
+  option_id: '',
+  answer_value: '',
+  answer_text: '',
+  note: '',
+})
+
 const mobilePage = ref(1)
 const mobilePageSize = ref(10)
 
 let searchTimer = null
 let loadSeq = 0
+let qualificationLoadSeq = 0
 
 const form = reactive({
   id: null,
@@ -375,6 +408,11 @@ const mobileRows = computed(() => {
   return rows.value.slice(start, end)
 })
 
+const isFrameView = computed(() => {
+  if (typeof window === 'undefined') return false
+  return new URLSearchParams(window.location.search).has('_frame')
+})
+
 const funnelChartUrl = computed(() => {
   const params = new URLSearchParams()
 
@@ -385,7 +423,12 @@ const funnelChartUrl = computed(() => {
 
   params.set('_frame', String(funnelChartFrameKey.value))
 
-  return `/api/admin/leads/funnel-chart?${params.toString()}`
+  const isViteDev = typeof window !== 'undefined' && window.location.port === '5173'
+  const baseUrl = isViteDev
+      ? 'http://127.0.0.1:8000/api/admin/leads/funnel-chart'
+      : '/api/admin/leads/funnel-chart'
+
+  return `${baseUrl}?${params.toString()}`
 })
 
 function buildFunnelParams() {
@@ -439,6 +482,24 @@ function resetForm() {
   })
 }
 
+function resetQualificationForm() {
+  qualificationForm.step_id = null
+  qualificationForm.option_id = ''
+  qualificationForm.answer_value = ''
+  qualificationForm.answer_text = ''
+  qualificationForm.note = ''
+}
+
+function resetQualificationState() {
+  qualificationLoading.value = false
+  qualificationSaving.value = false
+  qualificationApplying.value = false
+  qualificationError.value = ''
+  qualificationSession.value = null
+  qualificationHistorySession.value = null
+  resetQualificationForm()
+}
+
 function clearMessages() {
   err.value = ''
   successMessage.value = ''
@@ -483,6 +544,24 @@ function normalizeStatus(status) {
   return String(status ?? '').trim().toLowerCase()
 }
 
+function normalizeLeadStatusForForm(status, fallback = 'new') {
+  const key = normalizeStatus(status)
+
+  if (!key) return fallback
+  if (key === 'new') return 'new'
+  if (key === 'contacted' || key === 'needs_insurance') return 'contacted'
+  if (key === 'qualified' || key === 'ready_for_senior_rep') return 'qualified'
+  if (key === 'converted_to_carrier') return 'converted_to_carrier'
+  if (key === 'duplicate') return 'duplicate'
+  if (strContainsDisqual(key)) return 'disqualified'
+
+  return fallback
+}
+
+function strContainsDisqual(value) {
+  return String(value).includes('disqual')
+}
+
 function toTitleWords(status) {
   return String(status ?? '')
       .trim()
@@ -519,14 +598,14 @@ function getStatusMeta(status) {
     }
   }
 
-  if (key === 'contacted') {
+  if (key === 'contacted' || key === 'needs_insurance') {
     return {
       label: 'Contacted',
       className: 'status-badge--contacted',
     }
   }
 
-  if (key === 'qualified') {
+  if (key === 'qualified' || key === 'ready_for_senior_rep') {
     return {
       label: 'Qualified',
       className: 'status-badge--qualified',
@@ -544,6 +623,13 @@ function getStatusMeta(status) {
     return {
       label: 'Merged',
       className: 'status-badge--merged',
+    }
+  }
+
+  if (strContainsDisqual(key)) {
+    return {
+      label: 'Disqualified',
+      className: 'status-badge--disqualified',
     }
   }
 
@@ -600,7 +686,8 @@ function renderStageCell(row, type) {
 }
 
 function canConvert(row) {
-  return normalizeStatus(row.lead_status) !== 'converted_to_carrier' && !Number(row.duplicate_of_lead_id || 0)
+  return normalizeStatus(row.lead_status) === 'qualified'
+      && !Number(row.duplicate_of_lead_id || 0)
 }
 
 function canMerge(row) {
@@ -608,7 +695,12 @@ function canMerge(row) {
 }
 
 function canMarkDuplicate(row) {
-  return !Number(row.duplicate_of_lead_id || 0) && Number(row.duplicates_count || 0) === 0
+  const key = normalizeStatus(row.lead_status)
+
+  return !Number(row.duplicate_of_lead_id || 0)
+      && Number(row.duplicates_count || 0) === 0
+      && !['qualified', 'converted_to_carrier', 'duplicate', 'merged'].includes(key)
+      && !strContainsDisqual(key)
 }
 
 function canUnmarkDuplicate(row) {
@@ -906,6 +998,8 @@ async function loadRows() {
 function openCreate() {
   clearMessages()
   resetForm()
+  qualificationLoadSeq += 1
+  resetQualificationState()
   leadModalKey.value += 1
   open.value = true
 }
@@ -930,15 +1024,21 @@ function editRow(row) {
     usdot: row.usdot || '',
     truck_count: row.truck_count || '',
     trailer_count: row.trailer_count || '',
-    lead_status: row.lead_status || 'new',
+    lead_status: normalizeLeadStatusForForm(row.lead_status, 'new'),
     lead_stage_id: row.lead_stage_id ? String(row.lead_stage_id) : (row.stage?.id ? String(row.stage.id) : ''),
     notes: row.notes || '',
     duplicate_of_lead_id: row.duplicate_of_lead_id || null,
     duplicate_basis: row.duplicate_basis || '',
   })
 
+  qualificationLoadSeq += 1
+  resetQualificationState()
   leadModalKey.value += 1
   open.value = true
+
+  if (row.id) {
+    loadQualificationForLead(row.id)
+  }
 }
 
 function editRowById(id) {
@@ -948,8 +1048,78 @@ function editRowById(id) {
   }
 }
 
+function syncQualificationFormFromSession() {
+  resetQualificationForm()
+
+  const step = qualificationSession.value?.current_step
+  if (!step) return
+
+  qualificationForm.step_id = step.id
+}
+
+function pickLatestAnsweredSession(sessions) {
+  if (!Array.isArray(sessions)) {
+    return null
+  }
+
+  return sessions.find((session) => Array.isArray(session?.answers) && session.answers.length > 0) || null
+}
+
+function syncQualificationHistoryFromSession(session) {
+  if (Array.isArray(session?.answers) && session.answers.length > 0) {
+    qualificationHistorySession.value = session
+  }
+}
+
+async function loadQualificationForLead(leadId) {
+  const seq = ++qualificationLoadSeq
+  qualificationLoading.value = true
+  qualificationSaving.value = false
+  qualificationApplying.value = false
+  qualificationError.value = ''
+  qualificationSession.value = null
+  qualificationHistorySession.value = null
+  resetQualificationForm()
+
+  try {
+    const [startResponse, historyResponse] = await Promise.all([
+      startLeadQualification(leadId),
+      fetchLeadQualificationSessions(leadId),
+    ])
+
+    if (seq !== qualificationLoadSeq) {
+      return
+    }
+
+    qualificationSession.value = startResponse?.data ?? startResponse
+
+    const sessions = Array.isArray(historyResponse?.data) ? historyResponse.data : []
+    qualificationHistorySession.value = pickLatestAnsweredSession(sessions)
+
+    syncQualificationFormFromSession()
+    syncQualificationHistoryFromSession(qualificationSession.value)
+  } catch (e) {
+    if (seq !== qualificationLoadSeq) {
+      return
+    }
+
+    qualificationError.value = extractErrorMessage(e)
+  } finally {
+    if (seq === qualificationLoadSeq) {
+      qualificationLoading.value = false
+    }
+  }
+}
+
+function reloadQualificationNow() {
+  if (!form.id) return
+  loadQualificationForLead(form.id)
+}
+
 function closeModal() {
   open.value = false
+  qualificationLoadSeq += 1
+  resetQualificationState()
 }
 
 async function saveRow() {
@@ -960,6 +1130,8 @@ async function saveRow() {
     await saveLead(buildLeadPayload(), form.id)
     open.value = false
     resetForm()
+    qualificationLoadSeq += 1
+    resetQualificationState()
     successMessage.value = 'Lead saved.'
     await loadRows()
   } catch (e) {
@@ -979,12 +1151,125 @@ async function deleteCurrent() {
     await deleteLead(form.id)
     open.value = false
     resetForm()
+    qualificationLoadSeq += 1
+    resetQualificationState()
     successMessage.value = 'Lead deleted.'
     await loadRows()
   } catch (e) {
     err.value = extractErrorMessage(e)
   } finally {
     deleting.value = false
+  }
+}
+
+async function saveQualificationAnswerNow() {
+  if (!qualificationSession.value?.id || !qualificationForm.step_id) {
+    return
+  }
+
+  qualificationSaving.value = true
+  qualificationError.value = ''
+
+  try {
+    const payload = {
+      step_id: qualificationForm.step_id,
+      option_id: qualificationForm.option_id ? Number(qualificationForm.option_id) : null,
+      answer_value:
+          qualificationForm.answer_value !== '' && qualificationForm.answer_value !== null
+              ? String(qualificationForm.answer_value)
+              : null,
+      answer_text: qualificationForm.answer_text || null,
+      note: qualificationForm.note || null,
+    }
+
+    const response = await saveLeadQualificationAnswer(qualificationSession.value.id, payload)
+    qualificationSession.value = response?.data ?? response
+    syncQualificationFormFromSession()
+    syncQualificationHistoryFromSession(qualificationSession.value)
+    successMessage.value = 'Qualification answer saved.'
+    await loadRows()
+  } catch (e) {
+    qualificationError.value = extractErrorMessage(e)
+  } finally {
+    qualificationSaving.value = false
+  }
+}
+
+async function completeQualificationNow() {
+  if (!qualificationSession.value?.id) {
+    return
+  }
+
+  qualificationSaving.value = true
+  qualificationError.value = ''
+
+  try {
+    const response = await completeLeadQualificationSession(qualificationSession.value.id)
+    qualificationSession.value = response?.data ?? response
+    syncQualificationFormFromSession()
+    syncQualificationHistoryFromSession(qualificationSession.value)
+
+    if (qualificationSession.value?.recommended_status) {
+      form.lead_status = normalizeLeadStatusForForm(
+          qualificationSession.value.recommended_status,
+          form.lead_status || 'new'
+      )
+    }
+
+    successMessage.value = 'Qualification session completed.'
+    await loadRows()
+  } catch (e) {
+    qualificationError.value = extractErrorMessage(e)
+  } finally {
+    qualificationSaving.value = false
+  }
+}
+
+async function applyQualificationStageNow() {
+  if (!qualificationSession.value?.id) {
+    return
+  }
+
+  qualificationApplying.value = true
+  qualificationError.value = ''
+
+  try {
+    const response = await applyLeadQualificationStage(qualificationSession.value.id)
+    qualificationSession.value = response?.session ?? qualificationSession.value
+    syncQualificationHistoryFromSession(qualificationSession.value)
+
+    const updatedLead = response?.lead
+    if (updatedLead) {
+      if (updatedLead.lead_stage_id) {
+        form.lead_stage_id = String(updatedLead.lead_stage_id)
+      }
+
+      if (updatedLead.lead_status) {
+        form.lead_status = normalizeLeadStatusForForm(updatedLead.lead_status, form.lead_status || 'new')
+      }
+
+      if (typeof updatedLead.notes === 'string') {
+        form.notes = updatedLead.notes
+      }
+    } else {
+      if (qualificationSession.value?.recommended_stage_id) {
+        form.lead_stage_id = String(qualificationSession.value.recommended_stage_id)
+      }
+
+      if (qualificationSession.value?.recommended_status) {
+        form.lead_status = normalizeLeadStatusForForm(
+            qualificationSession.value.recommended_status,
+            form.lead_status || 'new'
+        )
+      }
+    }
+
+    successMessage.value = 'Recommended stage applied to lead.'
+    await loadRows()
+  } catch (e) {
+    qualificationError.value = extractErrorMessage(e)
+  } finally {
+    qualificationApplying.value = false
   }
 }
 
@@ -1174,6 +1459,7 @@ watch([q, scope, adName, stageId], () => {
 
 watch(funnelEnabled, async (enabled) => {
   if (!enabled) {
+    showFunnel.value = false
     return
   }
 
@@ -1436,6 +1722,12 @@ onBeforeUnmount(() => {
   background: #faf5ff;
   border-color: #e9d5ff;
   color: #7e22ce;
+}
+
+.leads-page .status-badge--disqualified {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
 }
 
 .leads-page .status-badge--duplicate {

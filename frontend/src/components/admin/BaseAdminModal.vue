@@ -1,40 +1,38 @@
 <template>
-  <div v-if="open" class="fixed inset-0 z-50">
+  <div v-if="open" class="fixed inset-0 z-[1000]">
     <div class="absolute inset-0 bg-black/40" @click="onClose"></div>
 
-    <div class="absolute inset-0 flex items-end justify-center sm:items-center sm:p-4">
+    <div class="absolute inset-0 flex items-end justify-center sm:items-center sm:p-3">
       <div
-          class="relative flex h-[100dvh] w-full flex-col overflow-hidden bg-white shadow-xl sm:h-auto sm:max-h-[90vh] sm:max-w-5xl sm:rounded-2xl"
+          class="relative flex h-[100dvh] w-full flex-col overflow-hidden bg-white shadow-xl sm:h-auto sm:max-h-[86vh] sm:max-w-[68rem] sm:rounded-xl"
       >
-        <div class="flex items-center justify-between border-b border-gray-200 px-4 py-3 sm:px-5">
-          <div class="min-w-0 pr-3 text-base font-semibold sm:text-lg">
+        <div class="flex items-center justify-between border-b border-gray-200 px-3 py-2 sm:px-4">
+          <div class="min-w-0 pr-2 text-sm font-semibold sm:text-base">
             {{ title }}
           </div>
 
           <button
-              class="shrink-0 rounded-lg px-2 py-1 text-sm hover:bg-gray-100"
+              class="shrink-0 rounded-md px-2 py-0.5 text-xs hover:bg-gray-100"
               @click="onClose"
           >
             ✕
           </button>
         </div>
 
-        <div class="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
-          <div v-if="loading" class="py-10 text-center text-gray-500">Loading...</div>
+        <div class="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4">
+          <div v-if="loading" class="py-8 text-center text-sm text-gray-500">Loading...</div>
 
-          <div v-else class="space-y-3">
+          <div v-else class="space-y-2">
             <slot />
           </div>
         </div>
 
-        <div
-            class="border-t border-gray-200 px-4 py-3 sm:px-5"
-        >
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div class="border-t border-gray-200 px-3 py-2 sm:px-4">
+          <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
               <button
                   v-if="recordId"
-                  class="w-full rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50 sm:w-auto"
+                  class="w-full rounded-md border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50 sm:w-auto"
                   :disabled="saving || deleting"
                   @click="onDeleteClick"
               >
@@ -44,7 +42,7 @@
 
               <button
                   v-if="recordId && confirmingDelete"
-                  class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-50 sm:w-auto"
+                  class="w-full rounded-md border border-gray-300 px-3 py-1.5 text-xs hover:bg-gray-50 disabled:opacity-50 sm:w-auto"
                   :disabled="saving || deleting"
                   @click="cancelDelete"
               >
@@ -54,7 +52,7 @@
 
             <div class="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
               <button
-                  class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50 sm:w-auto"
+                  class="w-full rounded-md border border-gray-300 px-3 py-1.5 text-xs hover:bg-gray-50 disabled:opacity-50 sm:w-auto"
                   :disabled="saving || deleting"
                   @click="onClose"
               >
@@ -62,7 +60,7 @@
               </button>
 
               <button
-                  class="w-full rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50 sm:w-auto"
+                  class="w-full rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-800 disabled:opacity-50 sm:w-auto"
                   :disabled="saving || deleting"
                   @click="$emit('save')"
               >

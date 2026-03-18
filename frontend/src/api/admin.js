@@ -66,7 +66,6 @@ export async function fetchLeadFunnelChartHtml(params = {}) {
         params,
         responseType: 'text',
     })
-
     return response.data
 }
 
@@ -187,5 +186,35 @@ export async function saveJobAvailable(payload, id = null) {
 
 export async function deleteJobAvailable(id) {
     const { data } = await http.delete(`/api/admin/jobs-available/${id}`)
+    return data
+}
+
+export async function startLeadQualification(id) {
+    const { data } = await http.post(`/api/admin/leads/${id}/qualification-sessions/start`)
+    return data
+}
+
+export async function fetchLeadQualificationSessions(leadId) {
+    const { data } = await http.get(`/api/admin/leads/${leadId}/qualification-sessions`)
+    return data
+}
+
+export async function fetchLeadQualificationSession(sessionId) {
+    const { data } = await http.get(`/api/admin/qualification-sessions/${sessionId}`)
+    return data
+}
+
+export async function saveLeadQualificationAnswer(sessionId, payload) {
+    const { data } = await http.post(`/api/admin/qualification-sessions/${sessionId}/answers`, payload)
+    return data
+}
+
+export async function completeLeadQualificationSession(sessionId) {
+    const { data } = await http.post(`/api/admin/qualification-sessions/${sessionId}/complete`)
+    return data
+}
+
+export async function applyLeadQualificationStage(sessionId) {
+    const { data } = await http.post(`/api/admin/qualification-sessions/${sessionId}/apply-recommended-stage`)
     return data
 }
