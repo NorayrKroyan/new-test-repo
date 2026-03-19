@@ -129,6 +129,41 @@ export async function deleteStage(id) {
     return data
 }
 
+export async function fetchQualificationScripts(params = {}) {
+    const { data } = await http.get('/api/admin/qualification-scripts', { params })
+    return data
+}
+
+export async function fetchQualificationScript(id) {
+    const { data } = await http.get(`/api/admin/qualification-scripts/${id}`)
+    return data
+}
+
+export async function saveQualificationScript(payload, id = null) {
+    if (id) {
+        const { data } = await http.put(`/api/admin/qualification-scripts/${id}`, payload)
+        return data
+    }
+
+    const { data } = await http.post('/api/admin/qualification-scripts', payload)
+    return data
+}
+
+export async function saveQualificationScriptBuilder(id, payload) {
+    const { data } = await http.put(`/api/admin/qualification-scripts/${id}/builder`, payload)
+    return data
+}
+
+export async function cloneQualificationScript(id) {
+    const { data } = await http.post(`/api/admin/qualification-scripts/${id}/clone`)
+    return data
+}
+
+export async function deleteQualificationScript(id) {
+    const { data } = await http.delete(`/api/admin/qualification-scripts/${id}`)
+    return data
+}
+
 export async function fetchCarriers(params = {}) {
     const { data } = await http.get('/api/admin/carriers', { params })
     return data
@@ -189,8 +224,8 @@ export async function deleteJobAvailable(id) {
     return data
 }
 
-export async function startLeadQualification(id) {
-    const { data } = await http.post(`/api/admin/leads/${id}/qualification-sessions/start`)
+export async function startLeadQualification(id, payload = {}) {
+    const { data } = await http.post(`/api/admin/leads/${id}/qualification-sessions/start`, payload)
     return data
 }
 

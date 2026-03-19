@@ -245,9 +245,13 @@
           :qualification-history-session="qualificationHistorySession"
           :qualification-form="qualificationForm"
           :qualification-error="qualificationError"
+          :qualification-scripts="qualificationScripts"
+          :qualification-script-loading="qualificationScriptsLoading"
+          :selected-qualification-script-id="selectedQualificationScriptId"
           @close="closeModal"
           @save="saveRow"
           @delete="deleteCurrent"
+          @change-selected-qualification-script="onSelectedQualificationScriptChange"
           @qualify="reloadQualificationNow"
           @save-answer="saveQualificationAnswerNow"
           @complete-qualification="completeQualificationNow"
@@ -300,6 +304,7 @@ import {
   fetchLeadMergePreview,
   fetchLeadQualificationSessions,
   fetchLeads,
+  fetchQualificationScripts,
   fetchStages,
   markLeadDuplicate,
   mergeLeadGroup,
@@ -354,9 +359,12 @@ const mergePreview = ref(null)
 const qualificationLoading = ref(false)
 const qualificationSaving = ref(false)
 const qualificationApplying = ref(false)
+const qualificationScriptsLoading = ref(false)
 const qualificationError = ref('')
 const qualificationSession = ref(null)
 const qualificationHistorySession = ref(null)
+const qualificationScripts = ref([])
+const selectedQualificationScriptId = ref('')
 
 const qualificationForm = reactive({
   step_id: null,
@@ -497,6 +505,7 @@ function resetQualificationState() {
   qualificationError.value = ''
   qualificationSession.value = null
   qualificationHistorySession.value = null
+  selectedQualificationScriptId.value = ''
   resetQualificationForm()
 }
 
@@ -1037,7 +1046,7 @@ function editRow(row) {
   open.value = true
 
   if (row.id) {
-    loadQualificationForLead(row.id)
+    loadQualificationForLead(row.id, { preferDefaultScript: true })
   }
 }
 
@@ -1071,7 +1080,59 @@ function syncQualificationHistoryFromSession(session) {
   }
 }
 
-async function loadQualificationForLead(leadId) {
+function normalizeQualificationScriptId(value) {
+  return value ? String(value) : ''
+}
+
+function findBestQualificationScriptId(leadLike = null) {
+  const scripts = Array.isArray(qualificationScripts.value) ? qualificationScripts.value : []
+  if (!scripts.length) return ''
+
+  const adNameValue = String(leadLike?.ad_name ?? form.ad_name ?? '').trim().toLowerCase()
+  const platformValue = String(leadLike?.platform ?? form.platform ?? '').trim().toLowerCase()
+
+  if (adNameValue) {
+    const adMatch = scripts.find((script) => String(script?.applies_to_ad_name ?? '').trim().toLowerCase() === adNameValue)
+    if (adMatch?.id) {
+      return String(adMatch.id)
+    }
+  }
+
+  if (platformValue) {
+    const platformMatch = scripts.find((script) => String(script?.applies_to_platform ?? '').trim().toLowerCase() === platformValue)
+    if (platformMatch?.id) {
+      return String(platformMatch.id)
+    }
+  }
+
+  const defaultMatch = scripts.find((script) => Boolean(script?.is_default))
+  if (defaultMatch?.id) {
+    return String(defaultMatch.id)
+  }
+
+  return scripts[0]?.id ? String(scripts[0].id) : ''
+}
+
+async function ensureQualificationScriptsLoaded() {
+  if (qualificationScriptsLoading.value) {
+    return
+  }
+
+  if (qualificationScripts.value.length) {
+    return
+  }
+
+  qualificationScriptsLoading.value = true
+
+  try {
+    const response = await fetchQualificationScripts({ active_only: 1 })
+    qualificationScripts.value = Array.isArray(response?.data) ? response.data : []
+  } finally {
+    qualificationScriptsLoading.value = false
+  }
+}
+
+async function loadQualificationForLead(leadId, options = {}) {
   const seq = ++qualificationLoadSeq
   qualificationLoading.value = true
   qualificationSaving.value = false
@@ -1082,8 +1143,18 @@ async function loadQualificationForLead(leadId) {
   resetQualificationForm()
 
   try {
+    await ensureQualificationScriptsLoaded()
+
+    if (!selectedQualificationScriptId.value || options.preferDefaultScript) {
+      selectedQualificationScriptId.value = findBestQualificationScriptId(form)
+    }
+
+    const requestPayload = selectedQualificationScriptId.value
+        ? { qualification_script_id: Number(selectedQualificationScriptId.value) }
+        : {}
+
     const [startResponse, historyResponse] = await Promise.all([
-      startLeadQualification(leadId),
+      startLeadQualification(leadId, requestPayload),
       fetchLeadQualificationSessions(leadId),
     ])
 
@@ -1092,6 +1163,9 @@ async function loadQualificationForLead(leadId) {
     }
 
     qualificationSession.value = startResponse?.data ?? startResponse
+    selectedQualificationScriptId.value = normalizeQualificationScriptId(
+        qualificationSession.value?.script?.id || selectedQualificationScriptId.value
+    )
 
     const sessions = Array.isArray(historyResponse?.data) ? historyResponse.data : []
     qualificationHistorySession.value = pickLatestAnsweredSession(sessions)
@@ -1109,6 +1183,10 @@ async function loadQualificationForLead(leadId) {
       qualificationLoading.value = false
     }
   }
+}
+
+function onSelectedQualificationScriptChange(value) {
+  selectedQualificationScriptId.value = normalizeQualificationScriptId(value)
 }
 
 function reloadQualificationNow() {
@@ -1469,6 +1547,7 @@ watch(funnelEnabled, async (enabled) => {
 onMounted(async () => {
   await loadAdNames()
   await loadStages()
+  await ensureQualificationScriptsLoaded()
   await loadRows()
 
   if (tableWrap.value) {

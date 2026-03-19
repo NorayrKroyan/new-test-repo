@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\JobAvailableController;
 use App\Http\Controllers\Api\Admin\LeadController;
 use App\Http\Controllers\Api\Admin\LeadQualificationController;
+use App\Http\Controllers\Api\Admin\QualificationScriptController;
 use App\Http\Controllers\Api\Admin\StageController;
 use App\Http\Controllers\Api\Carrier\AuthController as CarrierAuthController;
 use App\Http\Controllers\Api\Customer\AuthController as CustomerAuthController;
@@ -41,6 +42,10 @@ Route::prefix('admin')->group(function () {
         Route::post('/qualification-sessions/{session}/answers', [LeadQualificationController::class, 'saveAnswer']);
         Route::post('/qualification-sessions/{session}/complete', [LeadQualificationController::class, 'complete']);
         Route::post('/qualification-sessions/{session}/apply-recommended-stage', [LeadQualificationController::class, 'applyRecommendedStage']);
+
+        Route::post('/qualification-scripts/{qualification_script}/clone', [QualificationScriptController::class, 'clone']);
+        Route::put('/qualification-scripts/{qualification_script}/builder', [QualificationScriptController::class, 'saveBuilder']);
+        Route::apiResource('/qualification-scripts', QualificationScriptController::class);
 
         Route::apiResource('/leads', LeadController::class);
         Route::apiResource('/stages', StageController::class);

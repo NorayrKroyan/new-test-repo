@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Lead;
+use App\Models\LeadCallAnswer;
 use App\Models\LeadCallSession;
 use App\Models\QualificationScript;
 use App\Models\QualificationScriptStep;
@@ -97,40 +98,44 @@ class QualificationOutcomeService
         $callResult = 'needs_follow_up';
 
         if ($hasDisqualifier) {
+            /** @var LeadCallAnswer|null $disqualifyingAnswer */
             $disqualifyingAnswer = $answers->first(fn ($answer) => (bool) $answer->is_disqualifying);
             $recommendedStatus = $disqualifyingAnswer?->triggered_status ?: 'disqualified';
-            $recommendedStageOrder = 99;
+            $recommendedStageOrder = $disqualifyingAnswer?->triggered_stage_order ?: 99;
             $callResult = 'disqualified';
         } else {
-            $finalCall = $this->findAnswer($answers, 'final_call_booked');
-            $insurance = $this->findAnswer($answers, 'trailer_interchange_status');
-            $sandExperience = $this->findAnswer($answers, 'sand_experience');
-            $irpStatus = $this->findAnswer($answers, 'irp_status');
+            /** @var LeadCallAnswer|null $statusAnswer */
+            $statusAnswer = $answers
+                ->reverse()
+                ->first(fn ($answer) => trim((string) $answer->triggered_status) !== '');
 
-            if ($insurance && mb_strtolower((string) $insurance->answer_value) === 'no') {
-                $recommendedStatus = 'needs_insurance';
-                $recommendedStageOrder = 2;
-                $callResult = 'needs_insurance';
-            } elseif (
-                $finalCall &&
-                mb_strtolower((string) $finalCall->answer_value) === 'yes'
-            ) {
-                $recommendedStatus = 'ready_for_senior_rep';
-                $recommendedStageOrder = 3;
-                $callResult = 'qualified';
-            } elseif (
-                $score >= 4 ||
-                ($sandExperience && mb_strtolower((string) $sandExperience->answer_value) === 'yes') ||
-                ($irpStatus && mb_strtolower((string) $irpStatus->answer_value) === 'yes')
-            ) {
-                $recommendedStatus = 'qualified';
-                $recommendedStageOrder = 2;
-                $callResult = 'qualified';
-            } else {
-                $recommendedStatus = 'contacted';
-                $recommendedStageOrder = 1;
-                $callResult = 'contacted';
+            /** @var LeadCallAnswer|null $stageAnswer */
+            $stageAnswer = $answers
+                ->reverse()
+                ->first(fn ($answer) => $answer->triggered_stage_order !== null);
+
+            $recommendedStatus = $statusAnswer?->triggered_status;
+            $recommendedStageOrder = $stageAnswer?->triggered_stage_order;
+
+            if ($recommendedStatus === null && $recommendedStageOrder === null) {
+                if ($score >= 4) {
+                    $recommendedStatus = 'qualified';
+                    $recommendedStageOrder = 2;
+                } else {
+                    $recommendedStatus = 'contacted';
+                    $recommendedStageOrder = 1;
+                }
             }
+
+            if ($recommendedStatus === null) {
+                $recommendedStatus = $this->defaultStatusFromStageOrder($recommendedStageOrder, $score);
+            }
+
+            if ($recommendedStageOrder === null) {
+                $recommendedStageOrder = $this->defaultStageOrderFromStatus($recommendedStatus);
+            }
+
+            $callResult = $this->defaultCallResultFromStatus($recommendedStatus);
         }
 
         $recommendedStage = $this->resolveStageForLead(
@@ -138,7 +143,8 @@ class QualificationOutcomeService
             $recommendedStageOrder
         );
 
-        if (!$hasDisqualifier && in_array($recommendedStatus, ['qualified', 'ready_for_senior_rep'], true)) {
+        $normalizedStatus = strtolower(trim((string) $recommendedStatus));
+        if (!$hasDisqualifier && in_array($normalizedStatus, ['qualified', 'ready_for_senior_rep'], true)) {
             $qualifiesForConversion = true;
         }
 
@@ -192,6 +198,65 @@ class QualificationOutcomeService
             ->where('stage_order', $stageOrder)
             ->orderBy('id')
             ->first();
+    }
+
+    private function defaultStageOrderFromStatus(?string $recommendedStatus): ?int
+    {
+        $normalized = strtolower(trim((string) $recommendedStatus));
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        if (str_contains($normalized, 'disqual')) {
+            return 99;
+        }
+
+        if (in_array($normalized, ['qualified', 'ready_for_senior_rep'], true)) {
+            return 2;
+        }
+
+        if (in_array($normalized, ['contacted', 'needs_insurance', 'needs_follow_up'], true)) {
+            return 1;
+        }
+
+        return null;
+    }
+
+    private function defaultStatusFromStageOrder(?int $recommendedStageOrder, int $score): string
+    {
+        if ((int) $recommendedStageOrder === 99) {
+            return 'disqualified';
+        }
+
+        if ($recommendedStageOrder !== null && (int) $recommendedStageOrder >= 2) {
+            return 'qualified';
+        }
+
+        return $score >= 4 ? 'qualified' : 'contacted';
+    }
+
+    private function defaultCallResultFromStatus(?string $recommendedStatus): string
+    {
+        $normalized = strtolower(trim((string) $recommendedStatus));
+
+        if ($normalized === '') {
+            return 'needs_follow_up';
+        }
+
+        if (str_contains($normalized, 'disqual')) {
+            return 'disqualified';
+        }
+
+        if (in_array($normalized, ['qualified', 'ready_for_senior_rep'], true)) {
+            return 'qualified';
+        }
+
+        if ($normalized === 'contacted') {
+            return 'contacted';
+        }
+
+        return $normalized;
     }
 
     private function findAnswer(Collection $answers, string $stepKey)

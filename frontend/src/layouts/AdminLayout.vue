@@ -15,6 +15,7 @@
           <RouterLink :to="'/admin/customers'" :class="navLinkClass('/admin/customers')">Customers</RouterLink>
           <RouterLink :to="'/admin/leads'" :class="navLinkClass('/admin/leads')">Leads</RouterLink>
           <RouterLink :to="'/admin/stages'" :class="navLinkClass('/admin/stages')">Stages</RouterLink>
+          <RouterLink :to="'/admin/qualification-scripts'" :class="navLinkClass('/admin/qualification-scripts')">Qualification Scripts</RouterLink>
           <RouterLink :to="'/admin/jobs-available'" :class="navLinkClass('/admin/jobs-available')">Jobs Available</RouterLink>
         </nav>
 
@@ -54,6 +55,7 @@
               <RouterLink to="/admin/customers" :class="mobileNavLinkClass('/admin/customers')" @click="closeMobileNav">Customers</RouterLink>
               <RouterLink to="/admin/leads" :class="mobileNavLinkClass('/admin/leads')" @click="closeMobileNav">Leads</RouterLink>
               <RouterLink to="/admin/stages" :class="mobileNavLinkClass('/admin/stages')" @click="closeMobileNav">Stages</RouterLink>
+              <RouterLink to="/admin/qualification-scripts" :class="mobileNavLinkClass('/admin/qualification-scripts')" @click="closeMobileNav">Qualification Scripts</RouterLink>
               <RouterLink to="/admin/jobs-available" :class="mobileNavLinkClass('/admin/jobs-available')" @click="closeMobileNav">Jobs Available</RouterLink>
 
               <button

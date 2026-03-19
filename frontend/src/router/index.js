@@ -9,6 +9,7 @@ import AdminUsersPage from '../pages/admin/AdminUsersPage.vue'
 import AdminCustomersPage from '../pages/admin/AdminCustomersPage.vue'
 import LeadsPage from '../pages/admin/LeadsPage.vue'
 import StagesPage from '../pages/admin/StagesPage.vue'
+import QualificationScriptsPage from '../pages/admin/QualificationScriptsPage.vue'
 import CarriersPage from '../pages/admin/CarriersPage.vue'
 import JobsAvailablePage from '../pages/admin/JobsAvailablePage.vue'
 
@@ -32,6 +33,7 @@ const routes = [
     { path: '/admin/customers', name: 'admin-customers', component: AdminCustomersPage, meta: { requiresRole: 'admin' } },
     { path: '/admin/leads', name: 'admin-leads', component: LeadsPage, meta: { requiresRole: 'admin' } },
     { path: '/admin/stages', name: 'admin-stages', component: StagesPage, meta: { requiresRole: 'admin' } },
+    { path: '/admin/qualification-scripts', name: 'admin-qualification-scripts', component: QualificationScriptsPage, meta: { requiresRole: 'admin' } },
     { path: '/admin/carriers', name: 'admin-carriers', component: CarriersPage, meta: { requiresRole: 'admin' } },
     { path: '/admin/jobs-available', name: 'admin-jobs-available', component: JobsAvailablePage, meta: { requiresRole: 'admin' } },
 

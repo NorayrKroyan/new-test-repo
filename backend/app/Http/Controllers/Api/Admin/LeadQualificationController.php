@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Lead;
 use App\Models\LeadCallAnswer;
 use App\Models\LeadCallSession;
+use App\Models\QualificationScript;
 use App\Models\QualificationScriptStep;
 use App\Models\QualificationStepOption;
 use App\Services\QualificationOutcomeService;
@@ -39,7 +40,14 @@ class LeadQualificationController extends Controller
 
     public function start(Request $request, Lead $lead)
     {
-        $script = $this->outcomes->resolveScriptForLead($lead);
+        $selectedScriptId = $request->integer('qualification_script_id');
+
+        /** @var QualificationScript|null $script */
+        $script = $selectedScriptId
+            ? QualificationScript::query()
+                ->where('is_active', true)
+                ->find($selectedScriptId)
+            : $this->outcomes->resolveScriptForLead($lead);
 
         if (!$script) {
             throw ValidationException::withMessages([
@@ -450,6 +458,8 @@ class LeadQualificationController extends Controller
                 'question_text' => $session->currentStep->prompt_text ?: $session->currentStep->title ?: $session->currentStep->step_key,
                 'help_text' => $session->currentStep->help_text,
                 'step_type' => $session->currentStep->step_type,
+                'input_type' => $session->currentStep->step_type,
+                'answer_input_type' => $session->currentStep->step_type,
                 'options' => $session->currentStep->options->map(fn ($option) => [
                     'id' => $option->id,
                     'label' => $option->label,
