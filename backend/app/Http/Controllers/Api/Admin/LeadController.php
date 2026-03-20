@@ -32,6 +32,7 @@ class LeadController extends Controller
         $scope = $this->normalizeScope($request->query('scope'));
 
         $query = Lead::query()
+            ->select($this->leadListColumns())
             ->with([
                 'duplicateMaster:id,full_name,email,phone,lead_status',
                 'stage:id,stage_name,stage_group,stage_order',
@@ -638,6 +639,33 @@ HTML, 200)->header('Content-Type', 'text/html; charset=UTF-8');
         ])->loadCount('duplicates');
     }
 
+    private function leadListColumns(): array
+    {
+        return [
+            'id',
+            'source_name',
+            'ad_name',
+            'platform',
+            'source_created_at',
+            'lead_date_choice',
+            'insurance_answer',
+            'full_name',
+            'email',
+            'phone',
+            'city',
+            'state',
+            'carrier_class',
+            'usdot',
+            'truck_count',
+            'trailer_count',
+            'lead_status',
+            'lead_stage_id',
+            'notes',
+            'duplicate_of_lead_id',
+            'duplicate_basis',
+        ];
+    }
+
     private function validateLead(Request $request, ?Lead $lead = null): array
     {
         $data = $request->validate([
@@ -791,10 +819,16 @@ HTML, 200)->header('Content-Type', 'text/html; charset=UTF-8');
 
     private function buildCounts(): array
     {
+        $row = Lead::query()
+            ->selectRaw('COUNT(*) as all_count')
+            ->selectRaw('SUM(CASE WHEN duplicate_of_lead_id IS NULL THEN 1 ELSE 0 END) as active_count')
+            ->selectRaw('SUM(CASE WHEN duplicate_of_lead_id IS NOT NULL THEN 1 ELSE 0 END) as duplicates_count')
+            ->first();
+
         return [
-            'all' => Lead::query()->count(),
-            'active' => Lead::query()->whereNull('duplicate_of_lead_id')->count(),
-            'duplicates' => Lead::query()->whereNotNull('duplicate_of_lead_id')->count(),
+            'all' => (int) ($row->all_count ?? 0),
+            'active' => (int) ($row->active_count ?? 0),
+            'duplicates' => (int) ($row->duplicates_count ?? 0),
         ];
     }
 
@@ -1282,5 +1316,3 @@ HTML, 200)->header('Content-Type', 'text/html; charset=UTF-8');
             ->all();
     }
 }
-
-
