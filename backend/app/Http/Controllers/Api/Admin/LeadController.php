@@ -7,6 +7,8 @@ use App\Models\Carrier;
 use App\Models\Lead;
 use App\Models\Stage;
 use App\Reports\LeadFunnelReport;
+use App\Services\DialpadCallHistoryService;
+use App\Services\DialpadContactService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
@@ -14,9 +16,16 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class LeadController extends Controller
 {
+    public function __construct(
+        protected DialpadContactService $dialpadContacts,
+        protected DialpadCallHistoryService $dialpadCallHistory
+    ) {
+    }
+
     public function index(Request $request)
     {
         $q = trim((string) $request->query('q', ''));
@@ -53,8 +62,9 @@ class LeadController extends Controller
         $data = $this->normalizeDuplicatePayload($data);
 
         $row = Lead::create($data);
+        $dialpadSync = $this->syncLeadContactAfterSave($row, true);
 
-        return response()->json($this->hydrateLead($row), 201);
+        return response()->json($this->buildLeadResponse($row, $dialpadSync), 201);
     }
 
     public function show(Lead $lead)
@@ -62,14 +72,76 @@ class LeadController extends Controller
         return response()->json($this->hydrateLead($lead));
     }
 
+    public function syncContact(Lead $lead)
+    {
+        try {
+            $dialpadSync = $this->syncLeadContactNow($lead);
+        } catch (Throwable $e) {
+            throw ValidationException::withMessages([
+                'dialpad' => $e->getMessage(),
+            ]);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'lead' => $this->hydrateLead($lead),
+            'dialpad_sync' => $dialpadSync,
+        ]);
+    }
+
+    public function callHistory(Request $request, Lead $lead)
+    {
+        $syncSummary = null;
+        $syncError = null;
+
+        if ($request->boolean('sync')) {
+            try {
+                $syncSummary = $this->dialpadCallHistory->syncLead($lead);
+            } catch (Throwable $e) {
+                $syncError = $e->getMessage();
+            }
+        }
+
+        $rows = $this->loadLeadCallHistoryRows(
+            $lead->id,
+            $request->boolean('include_demo')
+        );
+
+        return response()->json([
+            'data' => $rows,
+            'meta' => [
+                'lead_id' => $lead->id,
+                'table' => 'lead_call_histories',
+                'include_demo' => $request->boolean('include_demo'),
+                'sync' => $syncSummary,
+                'sync_error' => $syncError,
+            ],
+        ]);
+    }
+
+    public function smsHistory(Lead $lead)
+    {
+        $rows = $this->loadLeadSmsHistoryRows($lead->id);
+
+        return response()->json([
+            'data' => $rows,
+            'meta' => [
+                'lead_id' => $lead->id,
+                'table' => 'lead_sms_histories',
+            ],
+        ]);
+    }
+
     public function update(Request $request, Lead $lead)
     {
         $data = $this->validateLead($request, $lead);
         $data = $this->normalizeDuplicatePayload($data, $lead);
+        $shouldSyncDialpad = $this->leadContactFieldsChanged($lead, $data);
 
         $lead->update($data);
+        $dialpadSync = $this->syncLeadContactAfterSave($lead, $shouldSyncDialpad);
 
-        return response()->json($this->hydrateLead($lead));
+        return response()->json($this->buildLeadResponse($lead, $dialpadSync));
     }
 
     public function destroy(Lead $lead)
@@ -481,6 +553,83 @@ HTML, 200)->header('Content-Type', 'text/html; charset=UTF-8');
             ]);
     }
 
+    private function buildLeadResponse(Lead $lead, ?array $dialpadSync = null): array
+    {
+        $payload = $this->hydrateLead($lead)->toArray();
+
+        if ($dialpadSync) {
+            $payload['dialpad_sync'] = $dialpadSync;
+        }
+
+        return $payload;
+    }
+
+    private function syncLeadContactAfterSave(Lead $lead, bool $shouldSync): array
+    {
+        if (!$shouldSync) {
+            return [
+                'status' => 'skipped',
+                'message' => 'No lead contact changes detected.',
+            ];
+        }
+
+        if (!$this->dialpadContacts->isConfigured()) {
+            return [
+                'status' => 'skipped',
+                'message' => 'Dialpad integration is not configured.',
+            ];
+        }
+
+        if (!$this->leadHasSyncableIdentity($lead)) {
+            return [
+                'status' => 'skipped',
+                'message' => 'Lead must have at least one of name, phone, or email to sync.',
+            ];
+        }
+
+        try {
+            return $this->syncLeadContactNow($lead);
+        } catch (Throwable $e) {
+            return [
+                'status' => 'failed',
+                'message' => $e->getMessage(),
+            ];
+        }
+    }
+
+    private function syncLeadContactNow(Lead $lead): array
+    {
+        $result = $this->dialpadContacts->syncLead($lead);
+
+        return [
+            'status' => 'synced',
+            'message' => 'Dialpad contact synced.',
+            'uid' => $result['uid'] ?? null,
+            'contact_id' => $result['contact_id'] ?? null,
+        ];
+    }
+
+    private function leadHasSyncableIdentity(Lead $lead): bool
+    {
+        return filled($lead->full_name) || filled($lead->email) || filled($lead->phone);
+    }
+
+    private function leadContactFieldsChanged(Lead $lead, array $data): bool
+    {
+        $incomingName = trim((string) ($data['full_name'] ?? $lead->full_name ?? ''));
+        $currentName = trim((string) ($lead->full_name ?? ''));
+
+        $incomingEmail = Lead::normalizeEmail($data['email'] ?? $lead->email);
+        $currentEmail = Lead::normalizeEmail($lead->email);
+
+        $incomingPhone = Lead::normalizePhone($data['phone'] ?? $lead->phone);
+        $currentPhone = Lead::normalizePhone($lead->phone);
+
+        return $incomingName !== $currentName
+            || $incomingEmail !== $currentEmail
+            || $incomingPhone !== $currentPhone;
+    }
+
     private function hydrateLead(Lead $lead): Lead
     {
         return $lead->fresh([
@@ -613,6 +762,7 @@ HTML, 200)->header('Content-Type', 'text/html; charset=UTF-8');
     {
         if ($scope === 'duplicates') {
             $query->whereNotNull('duplicate_of_lead_id');
+
             return;
         }
 
@@ -1063,4 +1213,74 @@ HTML, 200)->header('Content-Type', 'text/html; charset=UTF-8');
             !empty($snapshotParts) ? 'Source snapshot → ' . implode(' | ', $snapshotParts) : null,
         ])));
     }
+
+    private function loadLeadCallHistoryRows(int $leadId, bool $includeDemo = false): array
+    {
+        return DB::table('lead_call_histories')
+            ->where('lead_id', $leadId)
+            ->when(!$includeDemo, function ($query) {
+                $query->where('source', '!=', 'seeded_demo');
+            })
+            ->orderByDesc('started_at')
+            ->orderByDesc('id')
+            ->get()
+            ->map(fn ($row) => [
+                'id' => $row->id,
+                'lead_id' => $row->lead_id,
+                'source' => $row->source,
+                'external_call_id' => $row->external_call_id,
+                'direction' => $row->direction,
+                'call_status' => $row->call_status,
+                'started_at' => $row->started_at,
+                'ended_at' => $row->ended_at,
+                'duration_seconds' => $row->duration_seconds,
+                'agent_name' => $row->agent_name,
+                'from_number' => $row->from_number,
+                'to_number' => $row->to_number,
+                'recording_url' => $row->recording_url,
+                'note' => $row->note,
+                'created_at' => $row->created_at,
+                'updated_at' => $row->updated_at,
+            ])
+            ->values()
+            ->all();
+    }
+
+    private function loadLeadSmsHistoryRows(int $leadId): array
+    {
+        return DB::table('lead_sms_histories')
+            ->where('lead_id', $leadId)
+            ->orderByDesc('message_created_at')
+            ->orderByDesc('id')
+            ->get()
+            ->map(fn ($row) => [
+                'id' => $row->id,
+                'lead_id' => $row->lead_id,
+                'source' => $row->source,
+                'external_message_id' => $row->external_message_id,
+                'direction' => $row->direction,
+                'message_status' => $row->message_status,
+                'message_delivery_result' => $row->message_delivery_result,
+                'message_created_at' => $row->message_created_at,
+                'target_type' => $row->target_type,
+                'target_id' => $row->target_id,
+                'target_name' => $row->target_name,
+                'target_phone' => $row->target_phone,
+                'contact_id' => $row->contact_id,
+                'contact_name' => $row->contact_name,
+                'contact_phone' => $row->contact_phone,
+                'sender_id' => $row->sender_id,
+                'from_number' => $row->from_number,
+                'to_numbers_json' => $row->to_numbers_json,
+                'is_mms' => (bool) $row->is_mms,
+                'text' => $row->text,
+                'webhook_received_at' => $row->webhook_received_at,
+                'created_at' => $row->created_at,
+                'updated_at' => $row->updated_at,
+            ])
+            ->values()
+            ->all();
+    }
 }
+
+

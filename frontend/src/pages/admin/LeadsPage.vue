@@ -236,6 +236,7 @@
           :open="open"
           :saving="saving"
           :deleting="deleting"
+          :sync-saving="syncSaving"
           :form="form"
           :stages="stages"
           :qualification-loading="qualificationLoading"
@@ -248,9 +249,19 @@
           :qualification-scripts="qualificationScripts"
           :qualification-script-loading="qualificationScriptsLoading"
           :selected-qualification-script-id="selectedQualificationScriptId"
+          :call-history="callHistoryRows"
+          :call-history-lead-id="callHistoryLeadId"
+          :call-history-loading="callHistoryLoading"
+          :call-history-error="callHistoryError"
+          :call-history-sync-error="callHistorySyncError"
+          :sms-history="smsHistoryRows"
+          :sms-history-lead-id="smsHistoryLeadId"
+          :sms-history-loading="smsHistoryLoading"
+          :sms-history-error="smsHistoryError"
           @close="closeModal"
           @save="saveRow"
           @delete="deleteCurrent"
+          @sync-contact="syncCurrentLeadNow"
           @change-selected-qualification-script="onSelectedQualificationScriptChange"
           @qualify="reloadQualificationNow"
           @save-answer="saveQualificationAnswerNow"
@@ -303,6 +314,8 @@ import {
   fetchLeadFunnelSummary,
   fetchLeadMergePreview,
   fetchLeadQualificationSessions,
+  fetchLeadCallHistory,
+  fetchLeadSmsHistory,
   fetchLeads,
   fetchQualificationScripts,
   fetchStages,
@@ -312,6 +325,7 @@ import {
   saveLead,
   saveLeadQualificationAnswer,
   startLeadQualification,
+  syncLeadContact,
   unmarkLeadDuplicate,
 } from '../../api/admin'
 
@@ -332,6 +346,7 @@ const funnelEnabled = ref(true)
 const open = ref(false)
 const saving = ref(false)
 const deleting = ref(false)
+const syncSaving = ref(false)
 const loading = ref(false)
 const deduping = ref(false)
 const err = ref('')
@@ -365,6 +380,15 @@ const qualificationSession = ref(null)
 const qualificationHistorySession = ref(null)
 const qualificationScripts = ref([])
 const selectedQualificationScriptId = ref('')
+const callHistoryLoading = ref(false)
+const callHistoryError = ref('')
+const callHistorySyncError = ref('')
+const callHistoryLeadId = ref(null)
+const callHistoryRows = ref([])
+const smsHistoryLoading = ref(false)
+const smsHistoryError = ref('')
+const smsHistoryLeadId = ref(null)
+const smsHistoryRows = ref([])
 
 const qualificationForm = reactive({
   step_id: null,
@@ -380,6 +404,8 @@ const mobilePageSize = ref(10)
 let searchTimer = null
 let loadSeq = 0
 let qualificationLoadSeq = 0
+let callHistoryLoadSeq = 0
+let smsHistoryLoadSeq = 0
 
 const form = reactive({
   id: null,
@@ -509,6 +535,21 @@ function resetQualificationState() {
   resetQualificationForm()
 }
 
+function resetCallHistoryState() {
+  callHistoryLoading.value = false
+  callHistoryError.value = ''
+  callHistorySyncError.value = ''
+  callHistoryLeadId.value = null
+  callHistoryRows.value = []
+}
+
+function resetSmsHistoryState() {
+  smsHistoryLoading.value = false
+  smsHistoryError.value = ''
+  smsHistoryLeadId.value = null
+  smsHistoryRows.value = []
+}
+
 function clearMessages() {
   err.value = ''
   successMessage.value = ''
@@ -525,6 +566,24 @@ function extractErrorMessage(e) {
   }
 
   return e?.response?.data?.message || e?.message || 'Request failed'
+}
+
+function applyDialpadSaveMessages(response, baseSuccessMessage) {
+  successMessage.value = baseSuccessMessage
+
+  const sync = response?.dialpad_sync
+  if (!sync) {
+    return
+  }
+
+  if (sync.status === 'synced') {
+    successMessage.value = `${baseSuccessMessage} Dialpad contact synced.`
+    return
+  }
+
+  if (sync.status === 'failed') {
+    err.value = `Dialpad sync failed: ${sync.message || 'Request failed'}`
+  }
 }
 
 function esc(value) {
@@ -951,6 +1010,96 @@ async function loadStages() {
   }
 }
 
+async function loadCallHistoryForLead(id) {
+  const seq = ++callHistoryLoadSeq
+
+  if (!id) {
+    resetCallHistoryState()
+    return
+  }
+
+  callHistoryLeadId.value = Number(id)
+  callHistoryLoading.value = true
+  callHistoryError.value = ''
+  callHistorySyncError.value = ''
+  callHistoryRows.value = []
+
+  try {
+    const data = await fetchLeadCallHistory(id, { sync: 1 })
+
+    if (seq !== callHistoryLoadSeq || Number(form.id || 0) !== Number(id)) {
+      return
+    }
+
+    const responseLeadId = Number(data?.meta?.lead_id || 0)
+    if (responseLeadId !== Number(id)) {
+      callHistoryRows.value = []
+      callHistoryError.value = 'Call history response returned for the wrong lead.'
+      return
+    }
+
+    callHistorySyncError.value = String(data?.meta?.sync_error || '')
+    callHistoryRows.value = Array.isArray(data?.data)
+        ? data.data.filter((item) => Number(item?.lead_id || 0) === Number(id))
+        : []
+  } catch (e) {
+    if (seq !== callHistoryLoadSeq || Number(form.id || 0) !== Number(id)) {
+      return
+    }
+
+    callHistoryRows.value = []
+    callHistoryError.value = extractErrorMessage(e)
+  } finally {
+    if (seq === callHistoryLoadSeq && Number(form.id || 0) === Number(id)) {
+      callHistoryLoading.value = false
+    }
+  }
+}
+
+async function loadSmsHistoryForLead(id) {
+  const seq = ++smsHistoryLoadSeq
+
+  if (!id) {
+    resetSmsHistoryState()
+    return
+  }
+
+  smsHistoryLeadId.value = Number(id)
+  smsHistoryLoading.value = true
+  smsHistoryError.value = ''
+  smsHistoryRows.value = []
+
+  try {
+    const data = await fetchLeadSmsHistory(id)
+
+    if (seq !== smsHistoryLoadSeq || Number(form.id || 0) !== Number(id)) {
+      return
+    }
+
+    const responseLeadId = Number(data?.meta?.lead_id || 0)
+    if (responseLeadId !== Number(id)) {
+      smsHistoryRows.value = []
+      smsHistoryError.value = 'SMS history response returned for the wrong lead.'
+      return
+    }
+
+    smsHistoryRows.value = Array.isArray(data?.data)
+        ? data.data.filter((item) => Number(item?.lead_id || 0) === Number(id))
+        : []
+  } catch (e) {
+    if (seq !== smsHistoryLoadSeq || Number(form.id || 0) !== Number(id)) {
+      return
+    }
+
+    smsHistoryRows.value = []
+    smsHistoryError.value = extractErrorMessage(e)
+  } finally {
+    if (seq === smsHistoryLoadSeq && Number(form.id || 0) === Number(id)) {
+      smsHistoryLoading.value = false
+    }
+  }
+}
+
 async function loadRows() {
   const seq = ++loadSeq
   loading.value = true
@@ -1008,7 +1157,11 @@ function openCreate() {
   clearMessages()
   resetForm()
   qualificationLoadSeq += 1
+  callHistoryLoadSeq += 1
+  smsHistoryLoadSeq += 1
   resetQualificationState()
+  resetCallHistoryState()
+  resetSmsHistoryState()
   leadModalKey.value += 1
   open.value = true
 }
@@ -1041,12 +1194,18 @@ function editRow(row) {
   })
 
   qualificationLoadSeq += 1
+  callHistoryLoadSeq += 1
+  smsHistoryLoadSeq += 1
   resetQualificationState()
+  resetCallHistoryState()
+  resetSmsHistoryState()
   leadModalKey.value += 1
   open.value = true
 
   if (row.id) {
     loadQualificationForLead(row.id, { preferDefaultScript: true })
+    loadCallHistoryForLead(row.id)
+    loadSmsHistoryForLead(row.id)
   }
 }
 
@@ -1197,7 +1356,11 @@ function reloadQualificationNow() {
 function closeModal() {
   open.value = false
   qualificationLoadSeq += 1
+  callHistoryLoadSeq += 1
+  smsHistoryLoadSeq += 1
   resetQualificationState()
+  resetCallHistoryState()
+  resetSmsHistoryState()
 }
 
 async function saveRow() {
@@ -1205,17 +1368,39 @@ async function saveRow() {
   err.value = ''
 
   try {
-    await saveLead(buildLeadPayload(), form.id)
+    const response = await saveLead(buildLeadPayload(), form.id)
     open.value = false
     resetForm()
     qualificationLoadSeq += 1
+    callHistoryLoadSeq += 1
+    smsHistoryLoadSeq += 1
     resetQualificationState()
-    successMessage.value = 'Lead saved.'
+    resetCallHistoryState()
+    resetSmsHistoryState()
+    applyDialpadSaveMessages(response, 'Lead saved.')
     await loadRows()
   } catch (e) {
     err.value = extractErrorMessage(e)
   } finally {
     saving.value = false
+  }
+}
+
+async function syncCurrentLeadNow() {
+  if (!form.id) return
+
+  syncSaving.value = true
+  err.value = ''
+
+  try {
+    const response = await syncLeadContact(form.id)
+    const sync = response?.dialpad_sync
+    successMessage.value = sync?.message || 'Dialpad contact synced.'
+    await loadRows()
+  } catch (e) {
+    err.value = extractErrorMessage(e)
+  } finally {
+    syncSaving.value = false
   }
 }
 
@@ -1230,7 +1415,11 @@ async function deleteCurrent() {
     open.value = false
     resetForm()
     qualificationLoadSeq += 1
+    callHistoryLoadSeq += 1
+    smsHistoryLoadSeq += 1
     resetQualificationState()
+    resetCallHistoryState()
+    resetSmsHistoryState()
     successMessage.value = 'Lead deleted.'
     await loadRows()
   } catch (e) {

@@ -4,7 +4,10 @@
 
     <div class="absolute inset-0 flex items-end justify-center sm:items-center sm:p-3">
       <div
-          class="relative flex h-[100dvh] w-full flex-col overflow-hidden bg-white shadow-xl sm:h-auto sm:max-h-[86vh] sm:max-w-[68rem] sm:rounded-xl"
+          ref="modalRef"
+          class="relative flex h-[100dvh] w-full flex-col overflow-hidden bg-white shadow-xl sm:h-auto sm:rounded-xl"
+          :class="desktopModalClass"
+          :style="desktopModalStyle"
       >
         <div class="flex items-center justify-between border-b border-gray-200 px-3 py-2 sm:px-4">
           <div class="min-w-0 pr-2 text-sm font-semibold sm:text-base">
@@ -69,13 +72,33 @@
             </div>
           </div>
         </div>
+
+        <template v-if="isDesktop">
+          <div
+              class="absolute inset-y-0 right-0 z-10 hidden w-2 cursor-ew-resize sm:block"
+              @mousedown.prevent="startResize('right', $event)"
+          ></div>
+
+          <div
+              class="absolute inset-x-0 bottom-0 z-10 hidden h-2 cursor-ns-resize sm:block"
+              @mousedown.prevent="startResize('bottom', $event)"
+          ></div>
+
+          <div
+              class="absolute bottom-0 right-0 z-20 hidden h-4 w-4 cursor-nwse-resize sm:block"
+              @mousedown.prevent="startResize('corner', $event)"
+              title="Resize"
+          >
+            <div class="absolute bottom-1 right-1 h-2.5 w-2.5 border-b-2 border-r-2 border-gray-300"></div>
+          </div>
+        </template>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -90,6 +113,75 @@ const props = defineProps({
 const emit = defineEmits(['close', 'save', 'delete'])
 
 const confirmingDelete = ref(false)
+const modalRef = ref(null)
+const viewportWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1280)
+const viewportHeight = ref(typeof window !== 'undefined' ? window.innerHeight : 900)
+const modalWidth = ref(1088)
+const modalHeight = ref(null)
+const userResized = ref(false)
+const resizeState = ref(null)
+
+const DESKTOP_BREAKPOINT = 640
+const DEFAULT_WIDTH = 1088
+const DEFAULT_MAX_HEIGHT_RATIO = 0.86
+const DEFAULT_MIN_HEIGHT = 420
+const DEFAULT_MIN_WIDTH = 720
+
+const isDesktop = computed(() => viewportWidth.value >= DESKTOP_BREAKPOINT)
+
+const desktopModalClass = computed(() => {
+  if (!isDesktop.value) {
+    return ''
+  }
+
+  return 'sm:min-w-[720px] sm:min-h-[420px]'
+})
+
+const desktopModalStyle = computed(() => {
+  if (!isDesktop.value) {
+    return null
+  }
+
+  const maxWidth = Math.max(820, Math.floor(viewportWidth.value - 48))
+  const maxHeight = Math.max(520, Math.floor(viewportHeight.value - 48))
+  const width = Math.min(Math.max(modalWidth.value, DEFAULT_MIN_WIDTH), maxWidth)
+  const height = modalHeight.value == null
+      ? Math.min(Math.max(Math.floor(viewportHeight.value * DEFAULT_MAX_HEIGHT_RATIO), DEFAULT_MIN_HEIGHT), maxHeight)
+      : Math.min(Math.max(modalHeight.value, DEFAULT_MIN_HEIGHT), maxHeight)
+
+  return {
+    width: `${width}px`,
+    maxWidth: `${maxWidth}px`,
+    height: `${height}px`,
+    maxHeight: `${maxHeight}px`,
+  }
+})
+
+function syncViewport() {
+  viewportWidth.value = window.innerWidth
+  viewportHeight.value = window.innerHeight
+
+  if (!isDesktop.value) {
+    modalHeight.value = null
+    userResized.value = false
+    return
+  }
+
+  const maxWidth = Math.max(820, Math.floor(viewportWidth.value - 48))
+  const maxHeight = Math.max(520, Math.floor(viewportHeight.value - 48))
+
+  modalWidth.value = Math.min(Math.max(modalWidth.value, DEFAULT_MIN_WIDTH), maxWidth)
+
+  if (modalHeight.value != null) {
+    modalHeight.value = Math.min(Math.max(modalHeight.value, DEFAULT_MIN_HEIGHT), maxHeight)
+  }
+}
+
+function resetModalSize() {
+  modalWidth.value = Math.min(DEFAULT_WIDTH, Math.max(DEFAULT_MIN_WIDTH, viewportWidth.value - 48))
+  modalHeight.value = null
+  userResized.value = false
+}
 
 function onDeleteClick() {
   if (!confirmingDelete.value) {
@@ -107,13 +199,80 @@ function cancelDelete() {
 
 function onClose() {
   confirmingDelete.value = false
+  stopResize()
   emit('close')
+}
+
+function startResize(direction, event) {
+  if (!isDesktop.value || !modalRef.value) {
+    return
+  }
+
+  resizeState.value = {
+    direction,
+    startX: event.clientX,
+    startY: event.clientY,
+    startWidth: modalRef.value.offsetWidth,
+    startHeight: modalRef.value.offsetHeight,
+  }
+
+  window.addEventListener('mousemove', onResizeMove)
+  window.addEventListener('mouseup', stopResize)
+}
+
+function onResizeMove(event) {
+  if (!resizeState.value) {
+    return
+  }
+
+  const maxWidth = Math.max(820, Math.floor(viewportWidth.value - 48))
+  const maxHeight = Math.max(520, Math.floor(viewportHeight.value - 48))
+  const nextWidth = resizeState.value.startWidth + (event.clientX - resizeState.value.startX)
+  const nextHeight = resizeState.value.startHeight + (event.clientY - resizeState.value.startY)
+
+  if (resizeState.value.direction === 'right' || resizeState.value.direction === 'corner') {
+    modalWidth.value = Math.min(Math.max(nextWidth, DEFAULT_MIN_WIDTH), maxWidth)
+  }
+
+  if (resizeState.value.direction === 'bottom' || resizeState.value.direction === 'corner') {
+    modalHeight.value = Math.min(Math.max(nextHeight, DEFAULT_MIN_HEIGHT), maxHeight)
+  }
+
+  userResized.value = true
+}
+
+function stopResize() {
+  if (!resizeState.value) {
+    return
+  }
+
+  resizeState.value = null
+  window.removeEventListener('mousemove', onResizeMove)
+  window.removeEventListener('mouseup', stopResize)
 }
 
 watch(
     () => props.open,
-    (v) => {
-      if (!v) confirmingDelete.value = false
+    (value) => {
+      if (!value) {
+        confirmingDelete.value = false
+        stopResize()
+        return
+      }
+
+      if (!userResized.value) {
+        resetModalSize()
+      }
     }
 )
+
+onMounted(() => {
+  syncViewport()
+  window.addEventListener('resize', syncViewport)
+})
+
+onBeforeUnmount(() => {
+  stopResize()
+  window.removeEventListener('resize', syncViewport)
+})
 </script>

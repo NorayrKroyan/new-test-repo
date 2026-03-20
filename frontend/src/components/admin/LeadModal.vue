@@ -27,7 +27,19 @@
           ]"
       >
         <div class="rounded-lg border border-gray-200 p-3">
-          <div class="mb-2 text-xs font-semibold text-gray-900">Lead Info</div>
+          <div class="mb-2 flex items-center justify-between gap-2">
+            <div class="text-xs font-semibold text-gray-900">Lead Info</div>
+
+            <button
+                v-if="isEditMode"
+                type="button"
+                class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                :disabled="syncSaving || saving || deleting"
+                @click="$emit('sync-contact')"
+            >
+              {{ syncSaving ? 'Syncing...' : 'Sync Contact' }}
+            </button>
+          </div>
 
           <div class="grid grid-cols-1 gap-y-1.5 md:grid-cols-2 md:gap-x-4">
             <ModalFieldRow label="Source Name:" class="md:col-span-1">
@@ -117,6 +129,157 @@
                   class="min-h-[120px] max-h-[420px] w-full resize-y overflow-auto rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs"
               />
             </ModalFieldRow>
+
+            <div v-if="isEditMode" class="md:col-span-2">
+              <div class="overflow-hidden rounded-lg border border-slate-200 bg-white">
+                <div class="flex items-center justify-between gap-2 border-b border-slate-200 px-3 py-2">
+                  <div class="text-xs font-semibold text-slate-900">Call History</div>
+                  <div class="text-[11px] text-slate-500">
+                    {{ callHistoryLoading ? 'Loading...' : `${visibleCallHistory.length} record${visibleCallHistory.length === 1 ? '' : 's'}` }}
+                  </div>
+                </div>
+
+                <div v-if="callHistoryLoading" class="px-3 py-3 text-xs text-slate-600">
+                  Loading call history...
+                </div>
+
+                <div v-else-if="callHistoryError" class="px-3 py-3 text-xs text-rose-700">
+                  {{ callHistoryError }}
+                </div>
+
+                <div v-else-if="callHistorySyncError && !visibleCallHistory.length" class="px-3 py-3 text-xs text-amber-700">
+                  {{ callHistorySyncError }}
+                </div>
+
+                <div v-else-if="!visibleCallHistory.length" class="px-3 py-3 text-xs text-slate-600">
+                  No call history for this lead.
+                </div>
+
+                <div v-else class="overflow-hidden">
+                  <table class="w-full table-fixed border-collapse text-left text-[10px] leading-[13px] text-slate-700">
+                    <thead class="bg-slate-50 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                    <tr class="h-[23px]">
+                      <th class="w-[126px] border-b border-slate-200 px-2">Started</th>
+                      <th class="w-[40px] border-b border-slate-200 px-2">Dir</th>
+                      <th class="w-[72px] border-b border-slate-200 px-2">Status</th>
+                      <th class="w-[44px] border-b border-slate-200 px-2">Dur</th>
+                      <th class="w-[96px] border-b border-slate-200 px-2">Agent</th>
+                      <th class="w-[170px] border-b border-slate-200 px-2">Numbers</th>
+                      <th class="border-b border-slate-200 px-2">Note</th>
+                    </tr>
+                    </thead>
+
+                    <tbody class="bg-white">
+                    <tr
+                        v-for="item in visibleCallHistory"
+                        :key="item.id"
+                        class="h-[23px] border-b border-slate-100 hover:bg-slate-50"
+                    >
+                      <td class="px-2 py-0 whitespace-nowrap truncate" :title="formatCallHistoryStarted(item.started_at)">
+                        {{ formatCallHistoryStarted(item.started_at) }}
+                      </td>
+                      <td class="px-2 py-0 whitespace-nowrap truncate">
+                        {{ compactDirectionLabel(item.direction) }}
+                      </td>
+                      <td class="px-2 py-0 whitespace-nowrap">
+                        <span
+                            class="inline-flex items-center rounded-full border px-1.5 py-0 text-[10px] leading-4"
+                            :class="callStatusBadgeClass(item.call_status)"
+                        >
+                          {{ compactStatusLabel(item.call_status) }}
+                        </span>
+                      </td>
+                      <td class="px-2 py-0 whitespace-nowrap truncate">
+                        {{ compactDuration(item.duration_seconds) }}
+                      </td>
+                      <td class="px-2 py-0 whitespace-nowrap truncate" :title="item.agent_name || '—'">
+                        {{ item.agent_name || '—' }}
+                      </td>
+                      <td
+                          class="px-2 py-0 whitespace-nowrap truncate"
+                          :title="`${item.from_number || '—'} → ${item.to_number || '—'}`"
+                      >
+                        {{ item.from_number || '—' }} → {{ item.to_number || '—' }}
+                      </td>
+                      <td class="px-2 py-0 truncate" :title="item.note || '—'">
+                        {{ item.note || '—' }}
+                      </td>
+                    </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="isEditMode" class="md:col-span-2">
+              <div class="overflow-hidden rounded-lg border border-slate-200 bg-white">
+                <div class="flex items-center justify-between gap-2 border-b border-slate-200 px-3 py-2">
+                  <div class="text-xs font-semibold text-slate-900">SMS Log History</div>
+                  <div class="text-[11px] text-slate-500">
+                    {{ smsHistoryLoading ? 'Loading...' : `${visibleSmsHistory.length} record${visibleSmsHistory.length === 1 ? '' : 's'}` }}
+                  </div>
+                </div>
+
+                <div v-if="smsHistoryLoading" class="px-3 py-3 text-xs text-slate-600">
+                  Loading SMS history...
+                </div>
+
+                <div v-else-if="smsHistoryError" class="px-3 py-3 text-xs text-rose-700">
+                  {{ smsHistoryError }}
+                </div>
+
+                <div v-else-if="!visibleSmsHistory.length" class="px-3 py-3 text-xs text-slate-600">
+                  No SMS history for this lead.
+                </div>
+
+                <div v-else class="overflow-hidden">
+                  <table class="w-full table-fixed border-collapse text-left text-[10px] leading-[13px] text-slate-700">
+                    <thead class="bg-slate-50 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                    <tr class="h-[23px]">
+                      <th class="w-[126px] border-b border-slate-200 px-2">Started</th>
+                      <th class="w-[40px] border-b border-slate-200 px-2">Dir</th>
+                      <th class="w-[72px] border-b border-slate-200 px-2">Status</th>
+                      <th class="w-[120px] border-b border-slate-200 px-2">Contact</th>
+                      <th class="w-[160px] border-b border-slate-200 px-2">Numbers</th>
+                      <th class="border-b border-slate-200 px-2">Text</th>
+                    </tr>
+                    </thead>
+
+                    <tbody class="bg-white">
+                    <tr
+                        v-for="item in visibleSmsHistory"
+                        :key="item.id"
+                        class="h-[23px] border-b border-slate-100 hover:bg-slate-50"
+                    >
+                      <td class="px-2 py-0 whitespace-nowrap truncate" :title="formatSmsHistoryStarted(item.message_created_at)">
+                        {{ formatSmsHistoryStarted(item.message_created_at) }}
+                      </td>
+                      <td class="px-2 py-0 whitespace-nowrap truncate">
+                        {{ compactSmsDirectionLabel(item.direction) }}
+                      </td>
+                      <td class="px-2 py-0 whitespace-nowrap">
+                        <span
+                            class="inline-flex items-center rounded-full border px-1.5 py-0 text-[10px] leading-4"
+                            :class="smsStatusBadgeClass(item.message_status, item.message_delivery_result)"
+                        >
+                          {{ compactSmsStatusLabel(item.message_status, item.message_delivery_result) }}
+                        </span>
+                      </td>
+                      <td class="px-2 py-0 whitespace-nowrap truncate" :title="smsContactTitle(item)">
+                        {{ smsContactLabel(item) }}
+                      </td>
+                      <td class="px-2 py-0 whitespace-nowrap truncate" :title="smsNumbersTitle(item)">
+                        {{ smsNumbersLabel(item) }}
+                      </td>
+                      <td class="px-2 py-0 truncate" :title="smsTextTitle(item)">
+                        {{ smsTextLabel(item) }}
+                      </td>
+                    </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -383,6 +546,10 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
   saving: Boolean,
   deleting: { type: Boolean, default: false },
+  syncSaving: {
+    type: Boolean,
+    default: false,
+  },
   form: {
     type: Object,
     default: () => ({}),
@@ -437,9 +604,70 @@ const props = defineProps({
     type: [String, Number],
     default: '',
   },
+  callHistory: {
+    type: Array,
+    default: () => [],
+  },
+  callHistoryLeadId: {
+    type: [String, Number],
+    default: null,
+  },
+  callHistoryLoading: {
+    type: Boolean,
+    default: false,
+  },
+  callHistoryError: {
+    type: String,
+    default: '',
+  },
+  callHistorySyncError: {
+    type: String,
+    default: '',
+  },
+  smsHistory: {
+    type: Array,
+    default: () => [],
+  },
+  smsHistoryLeadId: {
+    type: [String, Number],
+    default: null,
+  },
+  smsHistoryLoading: {
+    type: Boolean,
+    default: false,
+  },
+  smsHistoryError: {
+    type: String,
+    default: '',
+  },
 })
 
 const isEditMode = computed(() => Boolean(props.form?.id))
+const visibleCallHistory = computed(() => {
+  const currentLeadId = Number(props.form?.id || 0)
+  const responseLeadId = Number(props.callHistoryLeadId || 0)
+
+  if (!currentLeadId || !responseLeadId || currentLeadId !== responseLeadId) {
+    return []
+  }
+
+  return (Array.isArray(props.callHistory) ? props.callHistory : []).filter((item) => {
+    return Number(item?.lead_id || 0) === currentLeadId
+  })
+})
+
+const visibleSmsHistory = computed(() => {
+  const currentLeadId = Number(props.form?.id || 0)
+  const responseLeadId = Number(props.smsHistoryLeadId || 0)
+
+  if (!currentLeadId || !responseLeadId || currentLeadId !== responseLeadId) {
+    return []
+  }
+
+  return (Array.isArray(props.smsHistory) ? props.smsHistory : []).filter((item) => {
+    return Number(item?.lead_id || 0) === currentLeadId
+  })
+})
 
 const duplicateBasisLabel = computed(() => {
   const value = String(props.form?.duplicate_basis ?? '').trim().toLowerCase()
@@ -585,10 +813,182 @@ function answerStepLabel(answer) {
   )
 }
 
+function formatCallHistoryStarted(value) {
+  if (!value) return '—'
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+
+  return date.toLocaleString([], {
+    year: '2-digit',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+function compactDirectionLabel(value) {
+  const normalized = String(value ?? '').trim().toLowerCase()
+
+  if (normalized === 'outbound') return 'Out'
+  if (normalized === 'inbound') return 'In'
+
+  return normalized ? formatStatus(normalized) : '—'
+}
+
+function compactStatusLabel(value) {
+  const normalized = String(value ?? '').trim().toLowerCase()
+
+  if (normalized === 'completed') return 'Done'
+  if (normalized === 'missed') return 'Missed'
+  if (normalized === 'voicemail') return 'VM'
+  if (normalized === 'failed') return 'Failed'
+  if (normalized === 'busy') return 'Busy'
+  if (normalized === 'no_answer') return 'No Ans'
+
+  return normalized ? formatStatus(normalized) : '—'
+}
+
+function callStatusBadgeClass(value) {
+  const normalized = String(value ?? '').trim().toLowerCase()
+
+  if (normalized === 'completed') {
+    return 'border-emerald-200 bg-emerald-50 text-emerald-700'
+  }
+
+  if (['missed', 'failed', 'busy', 'no_answer'].includes(normalized)) {
+    return 'border-rose-200 bg-rose-50 text-rose-700'
+  }
+
+  if (normalized === 'voicemail') {
+    return 'border-amber-200 bg-amber-50 text-amber-700'
+  }
+
+  return 'border-slate-200 bg-slate-50 text-slate-600'
+}
+
+function compactDuration(seconds) {
+  const total = Number(seconds || 0)
+
+  if (!Number.isFinite(total) || total <= 0) {
+    return '0s'
+  }
+
+  const minutes = Math.floor(total / 60)
+  const remainder = total % 60
+
+  if (minutes <= 0) {
+    return `${remainder}s`
+  }
+
+  return `${minutes}m ${String(remainder).padStart(2, '0')}s`
+}
+
+function formatSmsHistoryStarted(value) {
+  return formatCallHistoryStarted(value)
+}
+
+function compactSmsDirectionLabel(value) {
+  return compactDirectionLabel(value)
+}
+
+function compactSmsStatusLabel(messageStatus, deliveryResult) {
+  const status = String(messageStatus ?? '').trim().toLowerCase()
+  const delivery = String(deliveryResult ?? '').trim().toLowerCase()
+  const normalized = status || delivery
+
+  if (!normalized) return '—'
+  if (normalized === 'delivered') return 'Delivered'
+  if (normalized === 'received') return 'Received'
+  if (normalized === 'sent') return 'Sent'
+  if (normalized === 'queued') return 'Queued'
+  if (normalized === 'sending') return 'Sending'
+  if (normalized === 'failed') return 'Failed'
+  if (normalized === 'undelivered') return 'Undeliv'
+
+  return formatStatus(normalized)
+}
+
+function smsStatusBadgeClass(messageStatus, deliveryResult) {
+  const normalized = String(messageStatus ?? deliveryResult ?? '').trim().toLowerCase()
+
+  if (['delivered', 'received', 'sent'].includes(normalized)) {
+    return 'border-emerald-200 bg-emerald-50 text-emerald-700'
+  }
+
+  if (['failed', 'undelivered'].includes(normalized)) {
+    return 'border-rose-200 bg-rose-50 text-rose-700'
+  }
+
+  if (['queued', 'sending', 'pending'].includes(normalized)) {
+    return 'border-amber-200 bg-amber-50 text-amber-700'
+  }
+
+  return 'border-slate-200 bg-slate-50 text-slate-600'
+}
+
+function parseSmsToNumbers(value) {
+  if (Array.isArray(value)) {
+    return value.filter(Boolean).map((item) => String(item))
+  }
+
+  if (typeof value !== 'string' || value.trim() === '') {
+    return []
+  }
+
+  try {
+    const decoded = JSON.parse(value)
+    return Array.isArray(decoded) ? decoded.filter(Boolean).map((item) => String(item)) : []
+  } catch (_error) {
+    return []
+  }
+}
+
+function smsContactLabel(item) {
+  return item?.contact_name || item?.contact_phone || '—'
+}
+
+function smsContactTitle(item) {
+  const name = item?.contact_name || '—'
+  const phone = item?.contact_phone || '—'
+  return `${name} | ${phone}`
+}
+
+function smsNumbersLabel(item) {
+  const toNumbers = parseSmsToNumbers(item?.to_numbers_json)
+  const toLabel = toNumbers.length ? toNumbers.join(', ') : (item?.target_phone || '—')
+  return `${item?.from_number || '—'} → ${toLabel}`
+}
+
+function smsNumbersTitle(item) {
+  const toNumbers = parseSmsToNumbers(item?.to_numbers_json)
+  const targetPhone = item?.target_phone || '—'
+  const toLabel = toNumbers.length ? toNumbers.join(', ') : targetPhone
+  return `${item?.from_number || '—'} → ${toLabel}`
+}
+
+function smsTextLabel(item) {
+  const text = String(item?.text ?? '').trim()
+  if (text !== '') {
+    return text
+  }
+
+  return item?.is_mms ? 'MMS' : '—'
+}
+
+function smsTextTitle(item) {
+  return smsTextLabel(item)
+}
+
 defineEmits([
   'close',
   'save',
   'delete',
+  'sync-contact',
   'qualify',
   'change-selected-qualification-script',
   'save-answer',

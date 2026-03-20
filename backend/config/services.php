@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'dialpad' => [
+        'base_url' => env('DIALPAD_BASE_URL', 'https://dialpad.com/api/v2'),
+        'token' => env('DIALPAD_API_TOKEN'),
+        'timeout' => (int) env('DIALPAD_TIMEOUT', 15),
+    ],
+
 ];

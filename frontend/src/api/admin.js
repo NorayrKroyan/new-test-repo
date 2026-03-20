@@ -84,6 +84,21 @@ export async function saveLead(payload, id = null) {
     return data
 }
 
+export async function syncLeadContact(id) {
+    const { data } = await http.post(`/api/admin/leads/${id}/sync-contact`)
+    return data
+}
+
+export async function fetchLeadCallHistory(id, params = {}) {
+    const { data } = await http.get(`/api/admin/leads/${id}/call-history`, { params })
+    return data
+}
+
+export async function fetchLeadSmsHistory(id, params = {}) {
+    const { data } = await http.get(`/api/admin/leads/${id}/sms-history`, { params })
+    return data
+}
+
 export async function deleteLead(id) {
     const { data } = await http.delete(`/api/admin/leads/${id}`)
     return data

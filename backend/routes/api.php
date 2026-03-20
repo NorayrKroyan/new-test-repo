@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Api\Admin\CarrierController;
 use App\Http\Controllers\Api\Admin\CustomerController;
 use App\Http\Controllers\Api\Admin\DashboardController;
+use App\Http\Controllers\Api\Admin\DialpadSmsWebhookController;
 use App\Http\Controllers\Api\Admin\JobAvailableController;
 use App\Http\Controllers\Api\Admin\LeadController;
 use App\Http\Controllers\Api\Admin\LeadQualificationController;
@@ -13,6 +14,8 @@ use App\Http\Controllers\Api\Admin\StageController;
 use App\Http\Controllers\Api\Carrier\AuthController as CarrierAuthController;
 use App\Http\Controllers\Api\Customer\AuthController as CustomerAuthController;
 use Illuminate\Support\Facades\Route;
+
+Route::post('/webhooks/dialpad/sms', [DialpadSmsWebhookController::class, 'store']);
 
 Route::prefix('admin')->group(function () {
     Route::post('/login', [AdminAuthController::class, 'login']);
@@ -35,6 +38,9 @@ Route::prefix('admin')->group(function () {
         Route::post('/leads/{lead}/mark-duplicate', [LeadController::class, 'markDuplicate']);
         Route::post('/leads/{lead}/unmark-duplicate', [LeadController::class, 'unmarkDuplicate']);
         Route::post('/leads/{lead}/convert-to-carrier', [LeadController::class, 'convertToCarrier']);
+        Route::post('/leads/{lead}/sync-contact', [LeadController::class, 'syncContact']);
+        Route::get('/leads/{lead}/call-history', [LeadController::class, 'callHistory']);
+        Route::get('/leads/{lead}/sms-history', [LeadController::class, 'smsHistory']);
 
         Route::post('/leads/{lead}/qualification-sessions/start', [LeadQualificationController::class, 'start']);
         Route::get('/leads/{lead}/qualification-sessions', [LeadQualificationController::class, 'index']);
@@ -80,3 +86,4 @@ Route::prefix('customer')->group(function () {
         Route::post('/change-password', [CustomerAuthController::class, 'changePassword']);
     });
 });
+

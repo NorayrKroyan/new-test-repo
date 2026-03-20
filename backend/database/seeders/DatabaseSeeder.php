@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
             LeadSeeder::class,
             HaskellHaulLeadsSeeder::class,
             QualificationScriptSeeder::class,
+            LeadCallHistorySeeder::class,
         ]);
     }
 }
