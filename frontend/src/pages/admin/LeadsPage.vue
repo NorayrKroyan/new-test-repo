@@ -403,6 +403,7 @@ const mobilePageSize = ref(10)
 
 let searchTimer = null
 let loadSeq = 0
+let funnelLoadSeq = 0
 let qualificationLoadSeq = 0
 let callHistoryLoadSeq = 0
 let smsHistoryLoadSeq = 0
@@ -1117,28 +1118,6 @@ async function loadRows() {
 
     rows.value = Array.isArray(data?.data) ? [...data.data] : []
     mobilePage.value = 1
-
-    try {
-      if (!funnelEnabled.value || !adName.value) {
-        showFunnel.value = false
-        return
-      }
-
-      const hasFunnelData = await loadFunnelVisibility()
-
-      if (seq !== loadSeq) return
-
-      showFunnel.value = hasFunnelData
-
-      if (hasFunnelData) {
-        funnelChartFrameKey.value += 1
-      }
-    } catch (funnelError) {
-      if (seq !== loadSeq) return
-
-      showFunnel.value = false
-      err.value = extractErrorMessage(funnelError)
-    }
   } catch (e) {
     if (seq !== loadSeq) return
 
@@ -1150,6 +1129,32 @@ async function loadRows() {
     if (seq === loadSeq) {
       loading.value = false
     }
+  }
+}
+
+async function refreshFunnel() {
+  const seq = ++funnelLoadSeq
+
+  if (!funnelEnabled.value || !adName.value) {
+    showFunnel.value = false
+    return
+  }
+
+  try {
+    const hasFunnelData = await loadFunnelVisibility()
+
+    if (seq !== funnelLoadSeq) return
+
+    showFunnel.value = hasFunnelData
+
+    if (hasFunnelData) {
+      funnelChartFrameKey.value += 1
+    }
+  } catch (e) {
+    if (seq !== funnelLoadSeq) return
+
+    showFunnel.value = false
+    err.value = extractErrorMessage(e)
   }
 }
 
@@ -1713,14 +1718,26 @@ function handleTableClick(event) {
   }
 }
 
-watch([q, scope, adName, stageId], () => {
+watch([q, scope, adName, stageId], (nextValues, prevValues) => {
   if (searchTimer) {
     clearTimeout(searchTimer)
+    searchTimer = null
   }
 
   searchTimer = setTimeout(async () => {
-    await loadStages()
-    await loadRows()
+    searchTimer = null
+
+    const nextAdName = nextValues?.[2] ?? ''
+    const prevAdName = prevValues?.[2] ?? ''
+
+    if (nextAdName !== prevAdName) {
+      await loadStages()
+    }
+
+    await Promise.allSettled([
+      loadRows(),
+      refreshFunnel(),
+    ])
   }, 250)
 })
 
@@ -1730,18 +1747,21 @@ watch(funnelEnabled, async (enabled) => {
     return
   }
 
-  await loadRows()
+  await refreshFunnel()
 })
 
 onMounted(async () => {
-  await loadAdNames()
-  await loadStages()
-  await ensureQualificationScriptsLoaded()
-  await loadRows()
-
   if (tableWrap.value) {
     tableWrap.value.addEventListener('click', handleTableClick)
   }
+
+  await Promise.allSettled([
+    loadRows(),
+    loadAdNames(),
+    loadStages(),
+    ensureQualificationScriptsLoaded(),
+    refreshFunnel(),
+  ])
 })
 
 onBeforeUnmount(() => {
