@@ -6,6 +6,7 @@
       :saving="saving"
       :deleting="deleting"
       :record-id="form.id"
+      size-memory-key="lead-modal"
       save-label="Save"
       @close="$emit('close')"
       @save="$emit('save')"
@@ -21,12 +22,19 @@
       </div>
 
       <div
+          ref="splitPaneRef"
           :class="[
             'grid grid-cols-1 gap-3',
-            isEditMode ? 'xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]' : '',
+            isEditMode ? 'xl:items-stretch xl:gap-0' : '',
           ]"
+          :style="editPaneGridStyle"
       >
-        <div class="rounded-lg border border-gray-200 p-3">
+        <div
+            :class="[
+              'rounded-lg border border-gray-200 bg-white p-3',
+              isEditMode ? 'xl:rounded-r-none xl:border-r-0' : '',
+            ]"
+        >
           <div class="mb-2 flex items-center justify-between gap-2">
             <div class="text-xs font-semibold text-gray-900">Lead Info</div>
 
@@ -283,7 +291,17 @@
           </div>
         </div>
 
-        <div v-if="isEditMode" class="rounded-lg border border-gray-200 p-3">
+        <div v-if="isEditMode" class="relative hidden xl:flex items-stretch justify-center bg-slate-50/70">
+          <div class="w-px bg-slate-300"></div>
+          <button
+              type="button"
+              class="absolute inset-y-0 left-1/2 w-3 -translate-x-1/2 cursor-col-resize bg-transparent"
+              title="Resize panels"
+              @mousedown.prevent="startPaneResize"
+          ></button>
+        </div>
+
+        <div v-if="isEditMode" class="rounded-lg border border-slate-300 bg-slate-50/70 p-3 xl:rounded-l-none xl:border-l-0">
           <div class="mb-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div class="text-xs font-semibold text-gray-900">Qualification</div>
 
@@ -537,9 +555,12 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import BaseAdminModal from './BaseAdminModal.vue'
 import ModalFieldRow from './ModalFieldRow.vue'
+
+const leadModalSplitMemory = new Map()
+const LEAD_MODAL_SPLIT_STORAGE_KEY = 'lead-modal-split-weight'
 
 const props = defineProps({
   open: Boolean,
@@ -643,6 +664,26 @@ const props = defineProps({
 })
 
 const isEditMode = computed(() => Boolean(props.form?.id))
+const splitPaneRef = ref(null)
+const viewportWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1440)
+const splitLeftWeight = ref(50)
+const paneResizeState = ref(null)
+
+const XL_BREAKPOINT = 1280
+
+const isXlDesktop = computed(() => viewportWidth.value >= XL_BREAKPOINT)
+
+const editPaneGridStyle = computed(() => {
+  if (!isEditMode.value || !isXlDesktop.value) {
+    return null
+  }
+
+  const rightWeight = Math.max(1, 100 - splitLeftWeight.value)
+
+  return {
+    gridTemplateColumns: `minmax(0, ${splitLeftWeight.value}fr) 12px minmax(320px, ${rightWeight}fr)`,
+  }
+})
 const visibleCallHistory = computed(() => {
   const currentLeadId = Number(props.form?.id || 0)
   const responseLeadId = Number(props.callHistoryLeadId || 0)
@@ -983,6 +1024,124 @@ function smsTextLabel(item) {
 function smsTextTitle(item) {
   return smsTextLabel(item)
 }
+
+function clampSplitWeight(value) {
+  const width = splitPaneRef.value?.getBoundingClientRect()?.width || Math.max(960, viewportWidth.value - 96)
+  const safeWidth = Math.max(width, 1)
+  const minWeight = Math.max(32, Math.ceil((320 / safeWidth) * 100))
+  const maxWeight = 100 - minWeight
+
+  return Math.min(Math.max(Number(value) || 50, minWeight), maxWeight)
+}
+
+function persistSplitWeight(value = splitLeftWeight.value) {
+  const normalized = clampSplitWeight(value)
+
+  splitLeftWeight.value = normalized
+  leadModalSplitMemory.set(LEAD_MODAL_SPLIT_STORAGE_KEY, normalized)
+
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem(LEAD_MODAL_SPLIT_STORAGE_KEY, String(normalized))
+  }
+}
+
+function restoreSplitWeight() {
+  let remembered = leadModalSplitMemory.get(LEAD_MODAL_SPLIT_STORAGE_KEY)
+
+  if ((remembered === undefined || remembered === null) && typeof window !== 'undefined') {
+    const raw = window.localStorage.getItem(LEAD_MODAL_SPLIT_STORAGE_KEY)
+    if (raw !== null && raw !== '') {
+      remembered = Number(raw)
+    }
+  }
+
+  if (remembered === undefined || remembered === null || !Number.isFinite(Number(remembered))) {
+    return false
+  }
+
+  const normalized = clampSplitWeight(Number(remembered))
+  splitLeftWeight.value = normalized
+  leadModalSplitMemory.set(LEAD_MODAL_SPLIT_STORAGE_KEY, normalized)
+  return true
+}
+
+function syncViewport() {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  viewportWidth.value = window.innerWidth
+}
+
+function startPaneResize(event) {
+  if (!isEditMode.value || !isXlDesktop.value || !splitPaneRef.value) {
+    return
+  }
+
+  const rect = splitPaneRef.value.getBoundingClientRect()
+
+  paneResizeState.value = {
+    left: rect.left,
+    width: rect.width,
+  }
+
+  updatePaneSplit(event.clientX)
+
+  window.addEventListener('mousemove', onPaneResizeMove)
+  window.addEventListener('mouseup', stopPaneResize)
+}
+
+function onPaneResizeMove(event) {
+  updatePaneSplit(event.clientX)
+}
+
+function updatePaneSplit(clientX) {
+  if (!paneResizeState.value) {
+    return
+  }
+
+  const width = Math.max(1, paneResizeState.value.width)
+  const rawWeight = ((clientX - paneResizeState.value.left) / width) * 100
+
+  splitLeftWeight.value = clampSplitWeight(rawWeight)
+  persistSplitWeight(splitLeftWeight.value)
+}
+
+function stopPaneResize() {
+  if (!paneResizeState.value) {
+    return
+  }
+
+  paneResizeState.value = null
+  window.removeEventListener('mousemove', onPaneResizeMove)
+  window.removeEventListener('mouseup', stopPaneResize)
+}
+
+watch(
+    () => props.open,
+    async (value) => {
+      if (!value) {
+        return
+      }
+
+      await nextTick()
+      restoreSplitWeight()
+    }
+)
+
+onMounted(async () => {
+  syncViewport()
+  window.addEventListener('resize', syncViewport)
+
+  await nextTick()
+  restoreSplitWeight()
+})
+
+onBeforeUnmount(() => {
+  persistSplitWeight()
+  stopPaneResize()
+  window.removeEventListener('resize', syncViewport)
+})
 
 defineEmits([
   'close',

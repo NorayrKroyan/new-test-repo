@@ -86,8 +86,8 @@
 
           <div
               class="absolute bottom-0 right-0 z-20 hidden h-4 w-4 cursor-nwse-resize sm:block"
-              @mousedown.prevent="startResize('corner', $event)"
               title="Resize"
+              @mousedown.prevent="startResize('corner', $event)"
           >
             <div class="absolute bottom-1 right-1 h-2.5 w-2.5 border-b-2 border-r-2 border-gray-300"></div>
           </div>
@@ -98,7 +98,9 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+
+const modalSizeMemory = new Map()
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -108,6 +110,7 @@ const props = defineProps({
   deleting: { type: Boolean, default: false },
   recordId: { type: [Number, String, null], default: null },
   saveLabel: { type: String, default: 'Save' },
+  sizeMemoryKey: { type: String, default: '' },
 })
 
 const emit = defineEmits(['close', 'save', 'delete'])
@@ -118,7 +121,6 @@ const viewportWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 12
 const viewportHeight = ref(typeof window !== 'undefined' ? window.innerHeight : 900)
 const modalWidth = ref(1088)
 const modalHeight = ref(null)
-const userResized = ref(false)
 const resizeState = ref(null)
 
 const DESKTOP_BREAKPOINT = 640
@@ -126,6 +128,7 @@ const DEFAULT_WIDTH = 1088
 const DEFAULT_MAX_HEIGHT_RATIO = 0.86
 const DEFAULT_MIN_HEIGHT = 420
 const DEFAULT_MIN_WIDTH = 720
+const DEFAULT_STORAGE_PREFIX = 'base-admin-modal-size:'
 
 const isDesktop = computed(() => viewportWidth.value >= DESKTOP_BREAKPOINT)
 
@@ -157,13 +160,78 @@ const desktopModalStyle = computed(() => {
   }
 })
 
+function getStorageKey() {
+  const key = String(props.sizeMemoryKey || '').trim()
+  return key ? `${DEFAULT_STORAGE_PREFIX}${key}` : ''
+}
+
+function buildCurrentSizePayload() {
+  return {
+    width: modalWidth.value,
+    height: modalHeight.value,
+  }
+}
+
+function writeRememberedSize(payload) {
+  const storageKey = getStorageKey()
+  if (!storageKey) {
+    return
+  }
+
+  modalSizeMemory.set(storageKey, payload)
+
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem(storageKey, JSON.stringify(payload))
+  }
+}
+
+function readRememberedSize() {
+  const storageKey = getStorageKey()
+  if (!storageKey) {
+    return null
+  }
+
+  const inMemory = modalSizeMemory.get(storageKey)
+  if (inMemory && typeof inMemory === 'object') {
+    return inMemory
+  }
+
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  const raw = window.localStorage.getItem(storageKey)
+  if (!raw) {
+    return null
+  }
+
+  try {
+    const payload = JSON.parse(raw)
+    if (payload && typeof payload === 'object') {
+      modalSizeMemory.set(storageKey, payload)
+      return payload
+    }
+  } catch (_error) {
+    return null
+  }
+
+  return null
+}
+
+function persistModalSize() {
+  if (!isDesktop.value) {
+    return
+  }
+
+  writeRememberedSize(buildCurrentSizePayload())
+}
+
 function syncViewport() {
   viewportWidth.value = window.innerWidth
   viewportHeight.value = window.innerHeight
 
   if (!isDesktop.value) {
     modalHeight.value = null
-    userResized.value = false
     return
   }
 
@@ -180,7 +248,48 @@ function syncViewport() {
 function resetModalSize() {
   modalWidth.value = Math.min(DEFAULT_WIDTH, Math.max(DEFAULT_MIN_WIDTH, viewportWidth.value - 48))
   modalHeight.value = null
-  userResized.value = false
+}
+
+function restoreRememberedSize() {
+  if (!isDesktop.value) {
+    return false
+  }
+
+  const payload = readRememberedSize()
+  if (!payload) {
+    return false
+  }
+
+  const maxWidth = Math.max(820, Math.floor(viewportWidth.value - 48))
+  const maxHeight = Math.max(520, Math.floor(viewportHeight.value - 48))
+  const nextWidth = Number(payload?.width)
+  const nextHeight = Number(payload?.height)
+
+  if (Number.isFinite(nextWidth) && nextWidth > 0) {
+    modalWidth.value = Math.min(Math.max(nextWidth, DEFAULT_MIN_WIDTH), maxWidth)
+  }
+
+  if (Number.isFinite(nextHeight) && nextHeight > 0) {
+    modalHeight.value = Math.min(Math.max(nextHeight, DEFAULT_MIN_HEIGHT), maxHeight)
+  } else {
+    modalHeight.value = null
+  }
+
+  return true
+}
+
+async function applyOpenSizeState() {
+  if (!props.open) {
+    return
+  }
+
+  await nextTick()
+  syncViewport()
+
+  const restored = restoreRememberedSize()
+  if (!restored) {
+    resetModalSize()
+  }
 }
 
 function onDeleteClick() {
@@ -198,6 +307,7 @@ function cancelDelete() {
 }
 
 function onClose() {
+  persistModalSize()
   confirmingDelete.value = false
   stopResize()
   emit('close')
@@ -238,7 +348,7 @@ function onResizeMove(event) {
     modalHeight.value = Math.min(Math.max(nextHeight, DEFAULT_MIN_HEIGHT), maxHeight)
   }
 
-  userResized.value = true
+  persistModalSize()
 }
 
 function stopResize() {
@@ -247,31 +357,32 @@ function stopResize() {
   }
 
   resizeState.value = null
+  persistModalSize()
   window.removeEventListener('mousemove', onResizeMove)
   window.removeEventListener('mouseup', stopResize)
 }
 
 watch(
     () => props.open,
-    (value) => {
+    async (value) => {
       if (!value) {
         confirmingDelete.value = false
         stopResize()
         return
       }
 
-      if (!userResized.value) {
-        resetModalSize()
-      }
+      await applyOpenSizeState()
     }
 )
 
-onMounted(() => {
+onMounted(async () => {
   syncViewport()
   window.addEventListener('resize', syncViewport)
+  await applyOpenSizeState()
 })
 
 onBeforeUnmount(() => {
+  persistModalSize()
   stopResize()
   window.removeEventListener('resize', syncViewport)
 })
