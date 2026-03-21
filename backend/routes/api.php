@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\DialpadSmsWebhookController;
 use App\Http\Controllers\Api\Admin\JobAvailableController;
 use App\Http\Controllers\Api\Admin\LeadController;
+use App\Http\Controllers\Api\Admin\LeadMapController;
 use App\Http\Controllers\Api\Admin\LeadQualificationController;
 use App\Http\Controllers\Api\Admin\QualificationScriptController;
 use App\Http\Controllers\Api\Admin\StageController;
@@ -41,6 +42,10 @@ Route::prefix('admin')->group(function () {
         Route::post('/leads/{lead}/sync-contact', [LeadController::class, 'syncContact']);
         Route::get('/leads/{lead}/call-history', [LeadController::class, 'callHistory']);
         Route::get('/leads/{lead}/sms-history', [LeadController::class, 'smsHistory']);
+
+        Route::get('/lead-map/markers', [LeadMapController::class, 'markers']);
+        Route::post('/lead-map/geocode-missing', [LeadMapController::class, 'geocodeMissing']);
+        Route::post('/lead-map/leads/{lead}/geocode', [LeadMapController::class, 'geocodeLead']);
 
         Route::post('/leads/{lead}/qualification-sessions/start', [LeadQualificationController::class, 'start']);
         Route::get('/leads/{lead}/qualification-sessions', [LeadQualificationController::class, 'index']);
@@ -86,4 +91,3 @@ Route::prefix('customer')->group(function () {
         Route::post('/change-password', [CustomerAuthController::class, 'changePassword']);
     });
 });
-

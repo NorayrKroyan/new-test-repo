@@ -66,7 +66,23 @@ export async function fetchLeadFunnelChartHtml(params = {}) {
         params,
         responseType: 'text',
     })
+
     return response.data
+}
+
+export async function fetchLeadMapMarkers(params = {}) {
+    const { data } = await http.get('/api/admin/lead-map/markers', { params })
+    return data
+}
+
+export async function geocodeLeadMapMissing(payload = {}) {
+    const { data } = await http.post('/api/admin/lead-map/geocode-missing', payload)
+    return data
+}
+
+export async function geocodeLeadMapLead(id, payload = {}) {
+    const { data } = await http.post(`/api/admin/lead-map/leads/${id}/geocode`, payload)
+    return data
 }
 
 export async function mergeLeadGroup(id, payload) {

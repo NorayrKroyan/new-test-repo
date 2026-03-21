@@ -291,7 +291,7 @@
           </div>
         </div>
 
-        <div v-if="isEditMode" class="relative hidden xl:flex items-stretch justify-center bg-slate-50/70">
+        <div v-if="isEditMode" class="relative hidden xl:flex items-stretch justify-center bg-slate-300/80">
           <div class="w-px bg-slate-300"></div>
           <button
               type="button"
@@ -301,7 +301,7 @@
           ></button>
         </div>
 
-        <div v-if="isEditMode" class="rounded-lg border border-slate-300 bg-slate-50/70 p-3 xl:rounded-l-none xl:border-l-0">
+        <div v-if="isEditMode" class="rounded-lg border border-slate-500 bg-slate-200 p-3 xl:rounded-l-none xl:border-l-0">
           <div class="mb-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div class="text-xs font-semibold text-gray-900">Qualification</div>
 
