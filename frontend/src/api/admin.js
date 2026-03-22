@@ -1,5 +1,9 @@
 import http, { initCsrf } from './http'
 
+export function adminGoogleLoginUrl() {
+    return '/api/auth/google/redirect/admin'
+}
+
 export async function adminLogin(payload) {
     await initCsrf()
     const { data } = await http.post('/api/admin/login', payload)

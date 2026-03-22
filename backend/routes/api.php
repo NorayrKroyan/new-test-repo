@@ -14,9 +14,18 @@ use App\Http\Controllers\Api\Admin\QualificationScriptController;
 use App\Http\Controllers\Api\Admin\StageController;
 use App\Http\Controllers\Api\Carrier\AuthController as CarrierAuthController;
 use App\Http\Controllers\Api\Customer\AuthController as CustomerAuthController;
+use App\Http\Controllers\Api\GoogleAuthController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/webhooks/dialpad/sms', [DialpadSmsWebhookController::class, 'store']);
+
+Route::middleware('web')->prefix('auth/google')->group(function () {
+    Route::get('/redirect/{role}', [GoogleAuthController::class, 'redirect'])
+        ->where('role', 'admin|carrier|customer');
+
+    Route::get('/callback/{role}', [GoogleAuthController::class, 'callback'])
+        ->where('role', 'admin|carrier|customer');
+});
 
 Route::prefix('admin')->group(function () {
     Route::post('/login', [AdminAuthController::class, 'login']);

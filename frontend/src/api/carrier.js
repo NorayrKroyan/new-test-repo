@@ -1,5 +1,9 @@
 import http, { initCsrf } from './http';
 
+export function carrierGoogleLoginUrl() {
+    return '/api/auth/google/redirect/carrier';
+}
+
 export async function carrierRegister(payload) {
     await initCsrf();
     const { data } = await http.post('/api/carrier/register', payload);

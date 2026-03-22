@@ -30,6 +30,28 @@
       </div>
 
       <div class="mt-6 space-y-4">
+        <button
+            type="button"
+            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            @click="signInWithGoogle"
+        >
+          Continue with Google
+        </button>
+
+        <div class="relative">
+          <div class="absolute inset-0 flex items-center">
+            <div class="w-full border-t border-slate-200"></div>
+          </div>
+
+          <div class="relative flex justify-center">
+            <span class="bg-white px-3 text-xs font-medium uppercase tracking-wide text-slate-400">or</span>
+          </div>
+        </div>
+
+        <div v-if="googleError" class="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          {{ googleError }}
+        </div>
+
         <div>
           <label class="mb-1 block text-sm font-medium text-slate-700">Email</label>
           <input
@@ -87,8 +109,8 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { carrierLogin } from '../api/carrier'
-import { customerLogin } from '../api/customer'
+import { carrierGoogleLoginUrl, carrierLogin } from '../api/carrier'
+import { customerGoogleLoginUrl, customerLogin } from '../api/customer'
 
 const router = useRouter()
 const route = useRoute()
@@ -106,6 +128,25 @@ watch(
 
 const registeredNotice = computed(() => route.query.registered === '1')
 
+const googleErrorMessages = {
+  google_auth_failed: 'Google sign-in failed.',
+  google_session_expired: 'Google sign-in session expired. Please try again.',
+  google_email_missing: 'Google did not return an email address.',
+  account_not_found: 'No existing account matches that Google email.',
+  wrong_account_type: 'That Google account belongs to a different account type.',
+  account_inactive: 'This account is inactive.',
+  carrier_profile_missing: 'Carrier profile is missing for that account.',
+  carrier_not_active: 'Your carrier account is pending admin activation.',
+  customer_profile_missing: 'Customer profile is missing for that account.',
+  customer_not_active: 'Your customer account is pending admin activation.',
+  google_account_conflict: 'That Google account is already linked to another user.',
+}
+
+const googleError = computed(() => {
+  const code = route.query.auth_error
+  return code ? (googleErrorMessages[code] || 'Google sign-in failed.') : ''
+})
+
 const form = reactive({
   email: '',
   password: '',
@@ -122,8 +163,17 @@ function setRole(nextRole) {
     query: {
       role: nextRole,
       ...(route.query.registered === '1' ? { registered: '1' } : {}),
+      ...(route.query.auth_error ? { auth_error: route.query.auth_error } : {}),
     },
   })
+}
+
+function signInWithGoogle() {
+  const url = role.value === 'carrier'
+      ? carrierGoogleLoginUrl()
+      : customerGoogleLoginUrl()
+
+  window.location.assign(url)
 }
 
 async function submit() {

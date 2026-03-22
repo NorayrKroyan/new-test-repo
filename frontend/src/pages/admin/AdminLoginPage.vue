@@ -5,58 +5,49 @@
       <p class="mt-1 text-sm text-slate-500">MultiModal Portal</p>
 
       <div class="mt-6 space-y-4">
-        <div>
-          <label class="mb-1 block text-sm font-medium text-slate-700">Email</label>
-          <input v-model="form.email" type="email" class="h-11 w-full rounded-xl border border-slate-300 px-3 outline-none focus:border-slate-500" />
-        </div>
-
-        <div>
-          <label class="mb-1 block text-sm font-medium text-slate-700">Password</label>
-          <input v-model="form.password" type="password" class="h-11 w-full rounded-xl border border-slate-300 px-3 outline-none focus:border-slate-500" />
-        </div>
-
-        <div v-if="err" class="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">
-          {{ err }}
-        </div>
-
         <button
-            class="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white hover:bg-slate-800"
-            :disabled="loading"
-            @click="submit"
+            type="button"
+            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            @click="signInWithGoogle"
         >
-          {{ loading ? 'Signing in...' : 'Login' }}
+          Continue with Google
         </button>
+
+        <div v-if="googleError" class="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          {{ googleError }}
+        </div>
+
+        <p class="text-center text-xs text-slate-400">
+          Admin access is available through Google sign-in.
+        </p>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { adminLogin } from '../../api/admin';
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
+import { adminGoogleLoginUrl } from '../../api/admin';
 
-const router = useRouter();
+const route = useRoute();
 
-const loading = ref(false);
-const err = ref('');
+const googleErrorMessages = {
+  google_auth_failed: 'Google sign-in failed.',
+  google_session_expired: 'Google sign-in session expired. Please try again.',
+  google_email_missing: 'Google did not return an email address.',
+  account_not_found: 'No existing admin account matches that Google email.',
+  wrong_account_type: 'That Google account does not match an admin user.',
+  account_inactive: 'This admin account is inactive.',
+  google_account_conflict: 'That Google account is already linked to another user.',
+};
 
-const form = reactive({
-  email: 'admin@multimodal.local',
-  password: 'ChangeMe123!',
+const googleError = computed(() => {
+  const code = route.query.auth_error;
+  return code ? (googleErrorMessages[code] || 'Google sign-in failed.') : '';
 });
 
-async function submit() {
-  loading.value = true;
-  err.value = '';
-
-  try {
-    await adminLogin(form);
-    router.push('/admin/dashboard');
-  } catch (e) {
-    err.value = e?.response?.data?.message || e?.response?.data?.errors?.email?.[0] || 'Login failed';
-  } finally {
-    loading.value = false;
-  }
+function signInWithGoogle() {
+  window.location.assign(adminGoogleLoginUrl());
 }
 </script>

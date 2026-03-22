@@ -1,5 +1,9 @@
 import http, { initCsrf } from './http';
 
+export function customerGoogleLoginUrl() {
+    return '/api/auth/google/redirect/customer';
+}
+
 export async function customerRegister(payload) {
     await initCsrf();
     const { data } = await http.post('/api/customer/register', payload);
