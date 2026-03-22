@@ -401,8 +401,9 @@
                 <div class="space-y-2 p-3">
                   <div class="grid grid-cols-1 gap-2 xl:grid-cols-4">
                     <div class="xl:col-span-1">
-                      <label class="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                        Step Key
+                      <label class="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                        <span>Step Key</span>
+                        <FieldHelpPopover field="stepKey" />
                       </label>
                       <input
                           v-model="currentStep.step_key"
@@ -412,8 +413,9 @@
                     </div>
 
                     <div class="xl:col-span-2">
-                      <label class="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                        Title
+                      <label class="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                        <span>Title</span>
+                        <FieldHelpPopover field="title" />
                       </label>
                       <input
                           v-model="currentStep.title"
@@ -423,8 +425,9 @@
                     </div>
 
                     <div class="xl:col-span-1">
-                      <label class="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                        Order
+                      <label class="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                        <span>Order</span>
+                        <FieldHelpPopover field="order" align="right" />
                       </label>
                       <input
                           v-model="currentStep.step_order"
@@ -435,8 +438,9 @@
                     </div>
 
                     <div class="xl:col-span-3">
-                      <label class="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                        Prompt Text
+                      <label class="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                        <span>Prompt Text</span>
+                        <FieldHelpPopover field="promptText" />
                       </label>
                       <textarea
                           v-model="currentStep.prompt_text"
@@ -447,8 +451,9 @@
                     </div>
 
                     <div class="xl:col-span-1">
-                      <label class="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                        Input Type
+                      <label class="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                        <span>Input Type</span>
+                        <FieldHelpPopover field="inputType" align="right" />
                       </label>
                       <select
                           v-model="currentStep.step_type"
@@ -463,8 +468,9 @@
                     </div>
 
                     <div class="xl:col-span-4">
-                      <label class="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                        Help Text
+                      <label class="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                        <span>Help Text</span>
+                        <FieldHelpPopover field="helpText" />
                       </label>
                       <textarea
                           v-model="currentStep.help_text"
@@ -477,8 +483,9 @@
 
                   <div class="grid grid-cols-1 gap-2 xl:grid-cols-4">
                     <div>
-                      <label class="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                        Recommended Status
+                      <label class="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                        <span>Recommended Status</span>
+                        <FieldHelpPopover field="recommendedStatusStep" />
                       </label>
                       <input
                           v-model="currentStep.recommended_status"
@@ -488,8 +495,9 @@
                     </div>
 
                     <div>
-                      <label class="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                        Recommended Stage Order
+                      <label class="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                        <span>Recommended Stage Order</span>
+                        <FieldHelpPopover field="recommendedStageOrderStep" />
                       </label>
                       <input
                           v-model="currentStep.recommended_stage_order"
@@ -501,22 +509,31 @@
                     </div>
 
                     <div class="flex items-end">
-                      <label class="inline-flex items-center gap-1.5 text-xs text-slate-700">
-                        <input v-model="currentStep.is_required" type="checkbox" />
-                        Required
-                      </label>
+                      <div class="flex items-center gap-1.5">
+                        <label class="inline-flex items-center gap-1.5 text-xs text-slate-700">
+                          <input v-model="currentStep.is_required" type="checkbox" />
+                          <span>Required</span>
+                        </label>
+                        <FieldHelpPopover field="required" />
+                      </div>
                     </div>
 
                     <div class="flex items-end gap-3">
-                      <label class="inline-flex items-center gap-1.5 text-xs text-slate-700">
-                        <input v-model="currentStep.is_terminal" type="checkbox" />
-                        Terminal
-                      </label>
+                      <div class="flex items-center gap-1.5">
+                        <label class="inline-flex items-center gap-1.5 text-xs text-slate-700">
+                          <input v-model="currentStep.is_terminal" type="checkbox" />
+                          <span>Terminal</span>
+                        </label>
+                        <FieldHelpPopover field="terminal" />
+                      </div>
 
-                      <label class="inline-flex items-center gap-1.5 text-xs text-slate-700">
-                        <input v-model="currentStep.is_disqualifying" type="checkbox" />
-                        Disqualify
-                      </label>
+                      <div class="flex items-center gap-1.5">
+                        <label class="inline-flex items-center gap-1.5 text-xs text-slate-700">
+                          <input v-model="currentStep.is_disqualifying" type="checkbox" />
+                          <span>Disqualify</span>
+                        </label>
+                        <FieldHelpPopover field="disqualifyStep" align="right" />
+                      </div>
                     </div>
                   </div>
 
@@ -567,8 +584,9 @@
 
                         <div class="grid grid-cols-1 gap-2 xl:grid-cols-4">
                           <div>
-                            <label class="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                              Label
+                            <label class="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                              <span>Label</span>
+                              <FieldHelpPopover field="optionLabel" />
                             </label>
                             <input
                                 v-model="option.label"
@@ -578,8 +596,9 @@
                           </div>
 
                           <div>
-                            <label class="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                              Value
+                            <label class="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                              <span>Value</span>
+                              <FieldHelpPopover field="optionValue" />
                             </label>
                             <input
                                 v-model="option.value"
@@ -589,8 +608,9 @@
                           </div>
 
                           <div>
-                            <label class="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                              Score Delta
+                            <label class="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                              <span>Score Delta</span>
+                              <FieldHelpPopover field="scoreDelta" />
                             </label>
                             <input
                                 v-model="option.score_delta"
@@ -601,8 +621,9 @@
                           </div>
 
                           <div>
-                            <label class="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                              Next Question
+                            <label class="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                              <span>Next Question</span>
+                              <FieldHelpPopover field="nextQuestion" align="right" />
                             </label>
                             <select
                                 v-model="option.next_step_step_key"
@@ -620,8 +641,9 @@
                           </div>
 
                           <div>
-                            <label class="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                              Recommended Status
+                            <label class="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                              <span>Recommended Status</span>
+                              <FieldHelpPopover field="recommendedStatusOption" />
                             </label>
                             <input
                                 v-model="option.recommended_status"
@@ -631,8 +653,9 @@
                           </div>
 
                           <div>
-                            <label class="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                              Recommended Stage Order
+                            <label class="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                              <span>Recommended Stage Order</span>
+                              <FieldHelpPopover field="recommendedStageOrderOption" />
                             </label>
                             <input
                                 v-model="option.recommended_stage_order"
@@ -644,17 +667,23 @@
                           </div>
 
                           <div class="flex items-end">
-                            <label class="inline-flex items-center gap-1.5 text-xs text-slate-700">
-                              <input v-model="option.requires_note" type="checkbox" />
-                              Requires Note
-                            </label>
+                            <div class="flex items-center gap-1.5">
+                              <label class="inline-flex items-center gap-1.5 text-xs text-slate-700">
+                                <input v-model="option.requires_note" type="checkbox" />
+                                <span>Requires Note</span>
+                              </label>
+                              <FieldHelpPopover field="requiresNote" />
+                            </div>
                           </div>
 
                           <div class="flex items-end">
-                            <label class="inline-flex items-center gap-1.5 text-xs text-slate-700">
-                              <input v-model="option.is_disqualifying" type="checkbox" />
-                              Disqualify
-                            </label>
+                            <div class="flex items-center gap-1.5">
+                              <label class="inline-flex items-center gap-1.5 text-xs text-slate-700">
+                                <input v-model="option.is_disqualifying" type="checkbox" />
+                                <span>Disqualify</span>
+                              </label>
+                              <FieldHelpPopover field="disqualifyOption" align="right" />
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -701,6 +730,7 @@ import FixedHeader from 'datatables.net-fixedheader'
 
 import AdminLayout from '../../layouts/AdminLayout.vue'
 import QualificationScriptModal from '../../components/admin/QualificationScriptModal.vue'
+import FieldHelpPopover from '../../components/admin/FieldHelpPopover.vue'
 import {
   cloneQualificationScript,
   deleteQualificationScript,
