@@ -14,7 +14,7 @@ class StageSeeder extends Seeder
             ['stage_name' => 'Communication Established', 'stage_group' => 'Texas Hopper Leads', 'stage_order' => 2],
             ['stage_name' => 'Lead Profile Complete', 'stage_group' => 'Texas Hopper Leads', 'stage_order' => 3],
             ['stage_name' => 'Agreements Sent', 'stage_group' => 'Texas Hopper Leads', 'stage_order' => 4],
-            ['stage_name' => 'Closed Lead Win', 'stage_group' => 'Texas Hopper Leads', 'stage_order' => 5],
+            ['stage_name' => 'Qualified Lead', 'stage_group' => 'Texas Hopper Leads', 'stage_order' => 5],
             ['stage_name' => 'Ghosting Lead', 'stage_group' => 'Texas Hopper Leads', 'stage_order' => 98],
             ['stage_name' => 'Disqualified Lead', 'stage_group' => 'Texas Hopper Leads', 'stage_order' => 99],
         ];

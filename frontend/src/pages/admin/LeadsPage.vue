@@ -620,6 +620,7 @@ function normalizeLeadStatusForForm(status, fallback = 'new') {
   if (key === 'new') return 'new'
   if (key === 'contacted' || key === 'needs_insurance') return 'contacted'
   if (key === 'qualified' || key === 'ready_for_senior_rep') return 'qualified'
+  if (key === 'closed_won' || key === 'closed-won') return 'qualified'
   if (key === 'converted_to_carrier') return 'converted_to_carrier'
   if (key === 'duplicate') return 'duplicate'
   if (strContainsDisqual(key)) return 'disqualified'
@@ -674,7 +675,7 @@ function getStatusMeta(status) {
     }
   }
 
-  if (key === 'qualified' || key === 'ready_for_senior_rep') {
+  if (key === 'qualified' || key === 'ready_for_senior_rep' || key === 'closed_won' || key === 'closed-won') {
     return {
       label: 'Qualified',
       className: 'status-badge--qualified',
@@ -755,7 +756,7 @@ function renderStageCell(row, type) {
 }
 
 function canConvert(row) {
-  return normalizeStatus(row.lead_status) === 'qualified'
+  return ['qualified', 'closed_won', 'closed-won'].includes(normalizeStatus(row.lead_status))
       && !Number(row.duplicate_of_lead_id || 0)
 }
 
@@ -768,7 +769,7 @@ function canMarkDuplicate(row) {
 
   return !Number(row.duplicate_of_lead_id || 0)
       && Number(row.duplicates_count || 0) === 0
-      && !['qualified', 'converted_to_carrier', 'duplicate', 'merged'].includes(key)
+      && !['qualified', 'closed_won', 'closed-won', 'converted_to_carrier', 'duplicate', 'merged'].includes(key)
       && !strContainsDisqual(key)
 }
 

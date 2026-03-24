@@ -7,10 +7,10 @@
             <h1 class="text-2xl font-semibold leading-tight text-slate-900">Jobs Available</h1>
           </div>
 
-          <div class="grid w-full gap-2 sm:grid-cols-[minmax(260px,1fr)_auto] xl:max-w-[640px]">
+          <div class="grid w-full gap-2 md:grid-cols-[minmax(260px,1fr)_auto] xl:max-w-[640px]">
             <input
                 v-model="q"
-                class="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none placeholder:text-slate-400 focus:border-slate-400"
+                class="h-10 min-w-0 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none placeholder:text-slate-400 focus:border-slate-400"
                 placeholder="Search job"
             />
 
@@ -55,15 +55,23 @@
 
           <div class="mt-2 grid grid-cols-1 gap-1 text-sm leading-5 text-slate-700">
             <div><span class="font-medium">Title:</span> {{ row.title || '—' }}</div>
+            <div><span class="font-medium">Start:</span> {{ formatDateDisplay(row.job_start_date) }}</div>
             <div>
               <span class="font-medium">Route:</span>
               {{ row.origin_city || '—' }}, {{ row.origin_state || '—' }} →
               {{ row.destination_city || '—' }}, {{ row.destination_state || '—' }}
             </div>
-            <div><span class="font-medium">Equipment:</span> {{ row.equipment_type || '—' }}</div>
-            <div><span class="font-medium">Trailer:</span> {{ row.trailer_type || '—' }}</div>
-            <div><span class="font-medium">Weight:</span> {{ row.weight || '—' }}</div>
-            <div><span class="font-medium">Rate:</span> {{ row.rate || '—' }}</div>
+            <div><span class="font-medium">Capacity:</span> {{ rosterDisplay(row) }}</div>
+            <div><span class="font-medium">Rate Description:</span> {{ row.rate_description || '—' }}</div>
+          </div>
+
+          <div class="mt-3 flex justify-end">
+            <button
+                class="rounded-xl border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                @click="openRoster(row)"
+            >
+              Manage Roster
+            </button>
           </div>
         </div>
 
@@ -121,9 +129,19 @@
           :saving="saving"
           :deleting="deleting"
           :form="form"
+          :roster-summary="activeRosterSummary"
           @close="closeModal"
           @save="saveRow"
           @delete="deleteCurrent"
+          @manage-roster="openRosterFromForm"
+      />
+
+      <RosterModal
+          v-if="rosterOpen && rosterJob"
+          :open="rosterOpen"
+          :job="rosterJob"
+          @close="closeRoster"
+          @updated="onRosterUpdated"
       />
     </div>
   </AdminLayout>
@@ -137,6 +155,7 @@ import Responsive from 'datatables.net-responsive'
 import FixedHeader from 'datatables.net-fixedheader'
 import AdminLayout from '../../layouts/AdminLayout.vue'
 import JobAvailableModal from '../../components/admin/JobAvailableModal.vue'
+import RosterModal from '../../components/admin/RosterModal.vue'
 import { deleteJobAvailable, fetchJobsAvailable, saveJobAvailable } from '../../api/admin'
 
 DataTable.use(DataTablesCore)
@@ -146,6 +165,8 @@ DataTable.use(FixedHeader)
 const q = ref('')
 const rows = ref([])
 const open = ref(false)
+const rosterOpen = ref(false)
+const rosterJob = ref(null)
 const saving = ref(false)
 const deleting = ref(false)
 const loading = ref(false)
@@ -171,8 +192,11 @@ const form = reactive({
   equipment_type: '',
   trailer_type: '',
   weight: '',
-  rate: '',
+  rate_description: '',
   status: 'open',
+  job_start_date: '',
+  primary_required: 0,
+  spare_allowed: 0,
 })
 
 const mobileTotalPages = computed(() => {
@@ -186,9 +210,29 @@ const mobileRows = computed(() => {
   return rows.value.slice(start, end)
 })
 
+const activeRosterSummary = computed(() => {
+  const row = rows.value.find((item) => Number(item.id) === Number(form.id || 0))
+  return row?.roster_summary || {
+    primary_required: Number(form.primary_required || 0),
+    primary_filled: 0,
+    spare_allowed: Number(form.spare_allowed || 0),
+    spare_filled: 0,
+    primary_overfill: 0,
+    spare_overfill: 0,
+  }
+})
+
 function goToMobilePage(page) {
-  if (page < 1) page = 1
-  if (page > mobileTotalPages.value) page = mobileTotalPages.value
+  if (page < 1) {
+    mobilePage.value = 1
+    return
+  }
+
+  if (page > mobileTotalPages.value) {
+    mobilePage.value = mobileTotalPages.value
+    return
+  }
+
   mobilePage.value = page
 }
 
@@ -205,18 +249,19 @@ function resetForm() {
     equipment_type: '',
     trailer_type: '',
     weight: '',
-    rate: '',
+    rate_description: '',
     status: 'open',
+    job_start_date: '',
+    primary_required: 0,
+    spare_allowed: 0,
   })
 }
 
 function extractErrorMessage(e) {
-  const errors = e?.response?.data?.errors
-  if (errors && typeof errors === 'object') {
-    const firstKey = Object.keys(errors)[0]
-    const firstValue = firstKey ? errors[firstKey] : null
-    if (Array.isArray(firstValue) && firstValue.length) {
-      return String(firstValue[0])
+  if (e?.response?.data?.errors) {
+    const firstField = Object.values(e.response.data.errors)[0]
+    if (Array.isArray(firstField) && firstField[0]) {
+      return firstField[0]
     }
   }
 
@@ -243,6 +288,49 @@ function displayValue(value) {
 function sortValue(value) {
   const normalized = displayValue(value)
   return normalized === '—' ? '' : normalized
+}
+
+function formatDateDisplay(value) {
+  const raw = String(value ?? '').trim()
+
+  if (!raw) {
+    return '—'
+  }
+
+  const datePart = raw.split('T')[0].replaceAll('/', '-')
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+    const [year, month, day] = datePart.split('-')
+    return `${day}-${month}-${year}`
+  }
+
+  if (/^\d{2}-\d{2}-\d{4}$/.test(datePart)) {
+    const [month, day, year] = datePart.split('-')
+    return `${day}-${month}-${year}`
+  }
+
+  return raw
+}
+
+function dateSortValue(value) {
+  const raw = String(value ?? '').trim()
+
+  if (!raw) {
+    return ''
+  }
+
+  const datePart = raw.split('T')[0].replaceAll('/', '-')
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+    return datePart
+  }
+
+  if (/^\d{2}-\d{2}-\d{4}$/.test(datePart)) {
+    const [month, day, year] = datePart.split('-')
+    return `${year}-${month}-${day}`
+  }
+
+  return raw
 }
 
 function normalizeStatus(status) {
@@ -307,6 +395,25 @@ function renderStatusBadge(status) {
   return `<span class="status-badge ${meta.className}">${esc(meta.label)}</span>`
 }
 
+function rosterDisplay(row) {
+  const summary = row?.roster_summary || {}
+  return `${summary.primary_filled || 0} / ${summary.primary_required || 0} + ${summary.spare_filled || 0}`
+}
+
+function rosterBadgeClass(row) {
+  const summary = row?.roster_summary || {}
+
+  if ((summary.primary_overfill || 0) > 0 || (summary.spare_overfill || 0) > 0) {
+    return 'roster-badge roster-badge--danger'
+  }
+
+  if ((summary.primary_filled || 0) >= (summary.primary_required || 0) && (summary.primary_required || 0) > 0) {
+    return 'roster-badge roster-badge--warn'
+  }
+
+  return 'roster-badge roster-badge--info'
+}
+
 function buildRouteLabel(row) {
   return `${displayValue(row.origin_city)}, ${displayValue(row.origin_state)} → ${displayValue(row.destination_city)}, ${displayValue(row.destination_state)}`
 }
@@ -347,8 +454,28 @@ const columns = [
     },
   },
   {
+    title: 'Start Date',
+    data: 'job_start_date',
+    className: 'dt-start-date-col',
+    width: '120px',
+    render: (data, type) => {
+      if (type === 'sort' || type === 'type') {
+        return dateSortValue(data)
+      }
+
+      const value = formatDateDisplay(data)
+
+      if (type === 'filter') {
+        return value === '—' ? '' : value
+      }
+
+      return esc(value)
+    },
+  },
+  {
     title: 'Route',
     data: null,
+    className: 'dt-route-col',
     render: (_data, type, row) => {
       const value = buildRouteLabel(row)
 
@@ -360,16 +487,16 @@ const columns = [
     },
   },
   {
-    title: 'Rate',
-    data: 'rate',
-    render: (data, type) => {
-      const value = displayValue(data)
+    title: 'Capacity',
+    data: null,
+    render: (_data, type, row) => {
+      const value = rosterDisplay(row)
 
       if (type === 'sort' || type === 'type' || type === 'filter') {
         return sortValue(value)
       }
 
-      return esc(value)
+      return `<span class="${rosterBadgeClass(row)}">${esc(value)}</span>`
     },
   },
   {
@@ -381,6 +508,23 @@ const columns = [
       }
 
       return renderStatusBadge(data)
+    },
+  },
+  {
+    title: 'Roster',
+    data: null,
+    orderable: false,
+    searchable: false,
+    render: (_data, _type, row) => {
+      return `
+        <button
+          type="button"
+          class="job-roster-link"
+          data-id="${row.id}"
+        >
+          Manage Roster
+        </button>
+      `
     },
   },
 ]
@@ -399,7 +543,7 @@ const options = {
   fixedHeader: true,
   autoWidth: false,
   scrollX: true,
-  order: [[0, 'asc']],
+  order: [[2, 'asc']],
   language: {
     emptyTable: 'No jobs found',
     zeroRecords: 'No jobs found',
@@ -450,8 +594,11 @@ function editRow(row) {
     equipment_type: row.equipment_type || '',
     trailer_type: row.trailer_type || '',
     weight: row.weight || '',
-    rate: row.rate || '',
+    rate_description: row.rate_description || '',
     status: row.status || 'open',
+    job_start_date: row.job_start_date || '',
+    primary_required: row.primary_required || 0,
+    spare_allowed: row.spare_allowed || 0,
   })
 
   jobModalKey.value += 1
@@ -465,8 +612,59 @@ function editRowById(id) {
   }
 }
 
+function openRoster(row) {
+  rosterJob.value = row
+  rosterOpen.value = true
+}
+
+function openRosterById(id) {
+  const row = rows.value.find((item) => Number(item.id) === Number(id))
+  if (row) {
+    openRoster(row)
+  }
+}
+
+function openRosterFromForm() {
+  const row = rows.value.find((item) => Number(item.id) === Number(form.id || 0))
+  if (row) {
+    openRoster(row)
+  }
+}
+
 function closeModal() {
   open.value = false
+}
+
+function closeRoster() {
+  rosterOpen.value = false
+  rosterJob.value = null
+}
+
+function onRosterUpdated(summary) {
+  if (!rosterJob.value?.id) return
+
+  rows.value = rows.value.map((row) => {
+    if (Number(row.id) !== Number(rosterJob.value.id)) {
+      return row
+    }
+
+    const updated = {
+      ...row,
+      roster_summary: {
+        ...(row.roster_summary || {}),
+        ...(summary || {}),
+      },
+    }
+
+    rosterJob.value = updated
+
+    if (Number(form.id || 0) === Number(updated.id)) {
+      form.primary_required = updated.primary_required || form.primary_required
+      form.spare_allowed = updated.spare_allowed || form.spare_allowed
+    }
+
+    return updated
+  })
 }
 
 async function saveRow() {
@@ -474,7 +672,23 @@ async function saveRow() {
   err.value = ''
 
   try {
-    await saveJobAvailable(form, form.id)
+    await saveJobAvailable({
+      job_number: form.job_number || null,
+      title: form.title,
+      description: form.description || null,
+      origin_city: form.origin_city || null,
+      origin_state: form.origin_state || null,
+      destination_city: form.destination_city || null,
+      destination_state: form.destination_state || null,
+      equipment_type: form.equipment_type || null,
+      trailer_type: form.trailer_type || null,
+      weight: form.weight || null,
+      rate_description: form.rate_description || null,
+      status: form.status || 'open',
+      job_start_date: form.job_start_date || null,
+      primary_required: form.primary_required || 0,
+      spare_allowed: form.spare_allowed || 0,
+    }, form.id)
     open.value = false
     resetForm()
     await loadRows()
@@ -508,6 +722,13 @@ function handleTableClick(event) {
   if (editBtn) {
     event.preventDefault()
     editRowById(editBtn.getAttribute('data-id'))
+    return
+  }
+
+  const rosterBtn = event.target.closest('.job-roster-link')
+  if (rosterBtn) {
+    event.preventDefault()
+    openRosterById(rosterBtn.getAttribute('data-id'))
   }
 }
 
@@ -518,7 +739,7 @@ watch(q, () => {
 
   searchTimer = setTimeout(() => {
     loadRows()
-  }, 250)
+  }, 300)
 })
 
 onMounted(() => {
@@ -667,6 +888,22 @@ onBeforeUnmount(() => {
   line-height: 1.05rem;
 }
 
+.jobs-available-page table.dataTable thead th:nth-child(3),
+.jobs-available-page table.dataTable tbody td:nth-child(3),
+.jobs-available-page table.dataTable thead th.dt-start-date-col,
+.jobs-available-page table.dataTable tbody td.dt-start-date-col {
+  min-width: 120px !important;
+  width: 120px !important;
+  text-align: center !important;
+}
+
+.jobs-available-page table.dataTable thead th:nth-child(4),
+.jobs-available-page table.dataTable tbody td:nth-child(4),
+.jobs-available-page table.dataTable thead th.dt-route-col,
+.jobs-available-page table.dataTable tbody td.dt-route-col {
+  text-align: center !important;
+}
+
 .jobs-available-page table.dataTable tbody tr:hover {
   background: #f8fafc;
 }
@@ -687,6 +924,25 @@ onBeforeUnmount(() => {
   text-decoration: underline;
 }
 
+.jobs-available-page .job-roster-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: #fff;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+  white-space: nowrap;
+}
+
+.jobs-available-page .job-roster-link:hover {
+  background: #f8fafc;
+}
+
 .jobs-available-page .status-badge {
   display: inline-flex;
   align-items: center;
@@ -701,15 +957,15 @@ onBeforeUnmount(() => {
 }
 
 .jobs-available-page .status-badge--open {
-  background: #ecfdf5;
-  border-color: #a7f3d0;
-  color: #047857;
-}
-
-.jobs-available-page .status-badge--filled {
   background: #eff6ff;
   border-color: #bfdbfe;
   color: #1d4ed8;
+}
+
+.jobs-available-page .status-badge--filled {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #047857;
 }
 
 .jobs-available-page .status-badge--closed {
@@ -719,9 +975,40 @@ onBeforeUnmount(() => {
 }
 
 .jobs-available-page .status-badge--default {
-  background: #fff7ed;
-  border-color: #fed7aa;
-  color: #c2410c;
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.jobs-available-page .roster-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.jobs-available-page .roster-badge--info {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
+.jobs-available-page .roster-badge--warn {
+  background: #fffbeb;
+  border-color: #fcd34d;
+  color: #b45309;
+}
+
+.jobs-available-page .roster-badge--danger {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
 }
 
 @media (max-width: 767px) {

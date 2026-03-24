@@ -21,7 +21,11 @@ class JobAvailable extends Model
         'trailer_type',
         'weight',
         'rate',
+        'rate_description',
         'status',
+        'job_start_date',
+        'primary_required',
+        'spare_allowed',
         'customer_name',
         'customer_company',
         'customer_id',
@@ -35,6 +39,9 @@ class JobAvailable extends Model
         return [
             'posted_at' => 'datetime',
             'expires_at' => 'datetime',
+            'job_start_date' => 'date',
+            'primary_required' => 'integer',
+            'spare_allowed' => 'integer',
         ];
     }
 
@@ -46,5 +53,10 @@ class JobAvailable extends Model
     public function customer()
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function assignments()
+    {
+        return $this->hasMany(JobAssignment::class, 'job_available_id');
     }
 }

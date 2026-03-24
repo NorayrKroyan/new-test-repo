@@ -1,3 +1,4 @@
+// frontend/src/api/admin.js
 import http, { initCsrf } from './http'
 
 export function adminGoogleLoginUrl() {
@@ -286,5 +287,25 @@ export async function completeLeadQualificationSession(sessionId) {
 
 export async function applyLeadQualificationStage(sessionId) {
     const { data } = await http.post(`/api/admin/qualification-sessions/${sessionId}/apply-recommended-stage`)
+    return data
+}
+
+export async function fetchJobRoster(jobId, params = {}) {
+    const { data } = await http.get(`/api/admin/jobs-available/${jobId}/roster`, { params })
+    return data
+}
+
+export async function createJobAssignment(jobId, payload) {
+    const { data } = await http.post(`/api/admin/jobs-available/${jobId}/roster`, payload)
+    return data
+}
+
+export async function updateJobAssignment(id, payload) {
+    const { data } = await http.put(`/api/admin/job-assignments/${id}`, payload)
+    return data
+}
+
+export async function deleteJobAssignment(id) {
+    const { data } = await http.delete(`/api/admin/job-assignments/${id}`)
     return data
 }

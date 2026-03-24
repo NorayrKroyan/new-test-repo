@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Admin\CarrierController;
 use App\Http\Controllers\Api\Admin\CustomerController;
 use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\DialpadSmsWebhookController;
+use App\Http\Controllers\Api\Admin\JobAssignmentController;
 use App\Http\Controllers\Api\Admin\JobAvailableController;
 use App\Http\Controllers\Api\Admin\LeadController;
 use App\Http\Controllers\Api\Admin\LeadMapController;
@@ -72,6 +73,13 @@ Route::prefix('admin')->group(function () {
         Route::apiResource('/carriers', CarrierController::class);
         Route::apiResource('/customers', CustomerController::class);
         Route::apiResource('/jobs-available', JobAvailableController::class);
+
+        Route::get('/jobs-available/{jobs_available}/roster', [JobAssignmentController::class, 'index']);
+        Route::get('/jobs-available/{jobs_available}/roster-options', [JobAssignmentController::class, 'options']);
+        Route::post('/jobs-available/{jobs_available}/roster', [JobAssignmentController::class, 'store']);
+        Route::put('/job-assignments/{job_assignment}', [JobAssignmentController::class, 'update']);
+        Route::delete('/job-assignments/{job_assignment}', [JobAssignmentController::class, 'destroy']);
+        Route::post('/job-assignments/{job_assignment}/readiness-check', [JobAssignmentController::class, 'readinessCheck']);
     });
 });
 
