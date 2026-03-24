@@ -16,7 +16,6 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $today = Carbon::today()->toDateString();
         $windowEnd = Carbon::today()->addDays(30)->toDateString();
 
         $upcomingJobs = JobAvailable::query()
@@ -36,10 +35,10 @@ class DashboardController extends Controller
                         ->orderBy('id');
                 },
             ])
+            ->where('status', 'open')
             ->whereNotNull('job_start_date')
-            ->whereBetween('job_start_date', [$today, $windowEnd])
+            ->whereDate('job_start_date', '<=', $windowEnd)
             ->orderBy('job_start_date')
-            ->limit(12)
             ->get()
             ->map(function (JobAvailable $job) {
                 $primaryRequired = (int) ($job->primary_required ?? 0);
@@ -145,12 +144,12 @@ class DashboardController extends Controller
     private function presentRosterSlot(?JobAssignment $assignment, string $slotType, int $slotNumber, bool $isOverfill): array
     {
         $slotLabel = $slotType === 'spare'
-            ? sprintf('Alternate %d', $slotNumber)
+            ? sprintf('On-Call %d', $slotNumber)
             : sprintf('Position %d', $slotNumber);
 
         if (!$assignment || !$this->isFilledAssignment($assignment)) {
             $statusKey = $slotType === 'spare' ? 'open_alternate' : 'open';
-            $statusLabel = $slotType === 'spare' ? 'Open alternate' : 'Open';
+            $statusLabel = $slotType === 'spare' ? 'Open on-call' : 'Open';
 
             if ($isOverfill) {
                 $statusLabel .= ' · Overfill';
@@ -161,7 +160,7 @@ class DashboardController extends Controller
                 'slot_number' => $slotNumber,
                 'slot_label' => $slotLabel,
                 'display_name' => $slotType === 'spare'
-                    ? sprintf('Open alternate %d', $slotNumber)
+                    ? sprintf('Open on-call %d', $slotNumber)
                     : sprintf('Open position %d', $slotNumber),
                 'carrier_name' => null,
                 'driver_name' => null,
@@ -185,7 +184,7 @@ class DashboardController extends Controller
 
         $displayName = $carrierName !== ''
             ? $carrierName
-            : ($slotType === 'spare' ? 'Assigned alternate' : 'Assigned position');
+            : ($slotType === 'spare' ? 'Assigned on-call' : 'Assigned position');
 
         return [
             'slot_type' => $slotType,
@@ -270,7 +269,7 @@ class DashboardController extends Controller
         return match ($value) {
             'ready' => 'Ready',
             'pending_paperwork' => 'Pending paperwork',
-            'open_alternate' => 'Open alternate',
+            'open_alternate' => 'Open on-call',
             default => 'Open',
         };
     }

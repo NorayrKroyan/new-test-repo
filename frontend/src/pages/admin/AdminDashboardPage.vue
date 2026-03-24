@@ -49,7 +49,7 @@
             v-if="loading"
             class="rounded-xl border border-slate-200 bg-white px-2 py-2 text-center text-sm text-slate-500"
         >
-          Loading upcoming jobs...
+          Loading upcoming jobs.
         </div>
 
         <template v-else-if="upcomingRows.length">
@@ -384,7 +384,7 @@ function normalizedSlotStatusKey(slot) {
   const label = String(slot?.status_label || '').trim().toLowerCase()
 
   if (label.includes('pending')) return 'pending_paperwork'
-  if (label.includes('alternate')) return 'open_alternate'
+  if (label.includes('alternate') || label.includes('on-call') || label.includes('on call')) return 'open_alternate'
   if (label.includes('ready')) return 'ready'
 
   return 'open'
@@ -400,7 +400,7 @@ function slotStatusLabel(slot) {
     case 'pending_paperwork':
       return 'Pending paperwork'
     case 'open_alternate':
-      return 'Open alternate'
+      return 'Open on-call'
     case 'open':
     default:
       return 'Open'
@@ -427,8 +427,8 @@ function slotCarrierText(slot) {
         slot?.mc_name,
         slot?.slot_label,
         slot?.display_name,
-        `Open alternate ${slot?.slot_number || ''}`.trim(),
-        'Open alternate'
+        `Open on-call ${slot?.slot_number || ''}`.trim(),
+        'Open on-call'
     )
   }
 

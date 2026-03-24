@@ -10,7 +10,7 @@
       @save="$emit('close')"
       @delete="noop"
   >
-    <div class="space-y-3">
+    <div class="relative space-y-3">
       <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
         <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -19,7 +19,7 @@
             <div class="mt-1">
               Manual roster list only for now. Blank rows are generated from
               <span class="font-semibold">Primary Required</span> and
-              <span class="font-semibold">Spare Allowed</span>.
+              <span class="font-semibold">On-Call Allowed</span>.
             </div>
           </div>
 
@@ -42,81 +42,11 @@
         </div>
       </div>
 
-      <div class="rounded-lg border border-gray-200 bg-white p-3">
-        <div class="mb-2 text-xs font-semibold text-gray-900">
-          {{ form.id ? 'Edit Roster Row' : 'New Roster Row' }}
-        </div>
-
-        <div class="grid grid-cols-1 gap-y-1.5 md:grid-cols-2 md:gap-x-4">
-          <ModalFieldRow label="Slot Type:" class="md:col-span-1">
-            <div class="field-inline max-w-[220px]">
-              <select v-model="form.slot_type" class="field-input">
-                <option value="primary">Primary</option>
-                <option value="spare">Spare</option>
-              </select>
-              <InlineFieldHelp text="Primary rows count toward the required target. Spare rows are backup or alternate capacity." />
-            </div>
-          </ModalFieldRow>
-
-          <ModalFieldRow label="Status:" class="md:col-span-1">
-            <div class="field-inline max-w-[220px]">
-              <select v-model="form.status" class="field-input">
-                <option value="open">Open</option>
-                <option value="ready">Ready</option>
-                <option value="pending_paperwork">Pending paperwork</option>
-                <option value="open_alternate">Open alternate</option>
-              </select>
-              <InlineFieldHelp text="Manual roster status for this slot. Use Open or Open alternate for empty slots, and Ready or Pending paperwork when a carrier or driver is being worked." />
-            </div>
-          </ModalFieldRow>
-
-          <ModalFieldRow label="Carrier:" class="md:col-span-1">
-            <div class="field-inline max-w-[320px]">
-              <input v-model="form.carrier_name" maxlength="25" class="field-input" />
-              <InlineFieldHelp text="Carrier name entered by hand for this roster row. This does not create or link to a carrier record." />
-            </div>
-          </ModalFieldRow>
-
-          <ModalFieldRow label="Driver Name:" class="md:col-span-1">
-            <div class="field-inline max-w-[320px]">
-              <input v-model="form.driver_name" maxlength="25" class="field-input" />
-              <InlineFieldHelp text="Driver name entered by hand for this roster row. A driver name can be used only once per job roster." />
-            </div>
-          </ModalFieldRow>
-        </div>
-
-        <div v-if="error" class="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
-          {{ error }}
-        </div>
-
-        <div class="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <button
-              type="button"
-              class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-              @click="resetForm"
-          >
-            {{ form.id ? 'New Row' : 'Clear' }}
-          </button>
-
-          <button
-              v-if="form.id"
-              type="button"
-              class="rounded-lg border border-rose-300 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-50"
-              :disabled="savingRow || saving"
-              @click="deleteCurrentRow"
-          >
-            Delete
-          </button>
-
-          <button
-              type="button"
-              class="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-              :disabled="savingRow"
-              @click="saveForm"
-          >
-            {{ savingRow ? 'Saving...' : (form.id ? 'Update Row' : 'Add Row') }}
-          </button>
-        </div>
+      <div
+          v-if="error && !rowModalOpen"
+          class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700"
+      >
+        {{ error }}
       </div>
 
       <div class="rounded-lg border border-gray-200 bg-white p-3">
@@ -125,10 +55,6 @@
           <div class="text-[11px] text-slate-500">
             {{ loading ? 'Loading...' : `${rows.length} row${rows.length === 1 ? '' : 's'}` }}
           </div>
-        </div>
-
-        <div class="mb-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs text-slate-600">
-          Click the carrier column to open a row for edit.
         </div>
 
         <div v-if="loading" class="px-1 py-2 text-xs text-slate-600">
@@ -142,12 +68,144 @@
           />
         </div>
       </div>
+
+      <div
+          v-if="rowModalOpen"
+          class="roster-editor-overlay"
+          @click.self="closeRowEditor"
+      >
+        <div
+            ref="rowModalRef"
+            class="roster-editor-card"
+            :style="rowModalStyle"
+        >
+          <div class="flex items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
+            <div class="min-w-0 pr-2 text-sm font-semibold text-slate-900">
+              {{ form.id ? 'Edit Position' : 'New Roster Row' }}
+            </div>
+
+            <button
+                type="button"
+                class="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-300 text-sm leading-none text-slate-700 hover:bg-slate-50"
+                @click="closeRowEditor"
+            >
+              ×
+            </button>
+          </div>
+
+          <div class="flex-1 overflow-y-auto px-4 py-4">
+            <div class="editor-grid grid grid-cols-1 gap-y-2 sm:grid-cols-2 sm:gap-x-5">
+              <ModalFieldRow label="Slot Type:" class="sm:col-span-1">
+                <div class="field-inline w-full">
+                  <select v-model="form.slot_type" class="field-input">
+                    <option value="primary">Primary</option>
+                    <option value="spare">On-Call</option>
+                  </select>
+                  <InlineFieldHelp text="Primary rows count toward the required target. On-call rows are backup capacity." />
+                </div>
+              </ModalFieldRow>
+
+              <ModalFieldRow label="Status:" class="sm:col-span-1">
+                <div class="field-inline w-full">
+                  <select v-model="form.status" class="field-input">
+                    <option value="open">Open</option>
+                    <option value="ready">Ready</option>
+                    <option value="pending_paperwork">Pending paperwork</option>
+                    <option value="open_alternate">Open on-call</option>
+                  </select>
+                  <InlineFieldHelp text="Manual roster status for this slot. Use Open or Open on-call for empty slots, and Ready or Pending paperwork when a carrier or driver is being worked." />
+                </div>
+              </ModalFieldRow>
+
+              <ModalFieldRow label="Carrier:" class="sm:col-span-1">
+                <div class="field-inline w-full">
+                  <input v-model="form.carrier_name" maxlength="25" class="field-input" />
+                  <InlineFieldHelp text="Carrier name entered by hand for this roster row. This does not create or link to a carrier record." />
+                </div>
+              </ModalFieldRow>
+
+              <ModalFieldRow label="Driver Name:" class="sm:col-span-1">
+                <div class="field-inline w-full">
+                  <input v-model="form.driver_name" maxlength="25" class="field-input" />
+                  <InlineFieldHelp text="Driver name entered by hand for this roster row. A driver name can be used only once per job roster." />
+                </div>
+              </ModalFieldRow>
+            </div>
+
+            <div
+                v-if="error"
+                class="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700"
+            >
+              {{ error }}
+            </div>
+          </div>
+
+          <div class="border-t border-slate-200 px-4 py-3">
+            <div class="flex flex-wrap justify-end gap-2">
+              <button
+                  type="button"
+                  class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  @click="resetForm"
+              >
+                Clear
+              </button>
+
+              <button
+                  type="button"
+                  class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  @click="closeRowEditor"
+              >
+                Cancel
+              </button>
+
+              <button
+                  v-if="form.id"
+                  type="button"
+                  class="rounded-lg border border-rose-300 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-50"
+                  :disabled="savingRow || deletingRow"
+                  @click="deleteCurrentRow"
+              >
+                Delete
+              </button>
+
+              <button
+                  type="button"
+                  class="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                  :disabled="savingRow || deletingRow"
+                  @click="saveForm"
+              >
+                {{ savingRow ? 'Saving...' : (form.id ? 'Update Row' : 'Add Row') }}
+              </button>
+            </div>
+          </div>
+
+          <template v-if="isDesktopRowModal">
+            <div
+                class="absolute inset-y-0 right-0 z-10 hidden w-2 cursor-ew-resize sm:block"
+                @mousedown.prevent="startRowResize('right', $event)"
+            ></div>
+
+            <div
+                class="absolute inset-x-0 bottom-0 z-10 hidden h-2 cursor-ns-resize sm:block"
+                @mousedown.prevent="startRowResize('bottom', $event)"
+            ></div>
+
+            <div
+                class="absolute bottom-0 right-0 z-20 hidden h-4 w-4 cursor-nwse-resize sm:block"
+                title="Resize"
+                @mousedown.prevent="startRowResize('corner', $event)"
+            >
+              <div class="absolute bottom-1 right-1 h-2.5 w-2.5 border-b-2 border-r-2 border-gray-300"></div>
+            </div>
+          </template>
+        </div>
+      </div>
     </div>
   </BaseAdminModal>
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import BaseAdminModal from './BaseAdminModal.vue'
 import ModalFieldRow from './ModalFieldRow.vue'
 import InlineFieldHelp from './InlineFieldHelp.vue'
@@ -172,8 +230,26 @@ const emit = defineEmits(['close', 'updated'])
 const loading = ref(false)
 const saving = ref(false)
 const savingRow = ref(false)
+const deletingRow = ref(false)
 const error = ref('')
 const rows = ref([])
+const rowModalOpen = ref(false)
+const rowModalRef = ref(null)
+
+const viewportWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1280)
+const viewportHeight = ref(typeof window !== 'undefined' ? window.innerHeight : 900)
+const rowModalWidth = ref(760)
+const rowModalHeight = ref(null)
+const rowResizeState = ref(null)
+
+const ROW_MODAL_STORAGE_KEY = 'roster-row-modal'
+const ROW_MODAL_DEFAULT_WIDTH = 760
+const ROW_MODAL_DEFAULT_MIN_WIDTH = 620
+const ROW_MODAL_DEFAULT_MIN_HEIGHT = 320
+const ROW_MODAL_DEFAULT_HEIGHT = 360
+const ROW_MODAL_DEFAULT_MAX_HEIGHT_RATIO = 0.82
+const DESKTOP_BREAKPOINT = 640
+
 const summary = ref({
   primary_required: 0,
   primary_filled: 0,
@@ -193,15 +269,68 @@ const form = reactive({
 
 let rosterSeq = 0
 
+const isDesktopRowModal = computed(() => viewportWidth.value >= DESKTOP_BREAKPOINT)
+
+const rowModalStyle = computed(() => {
+  if (!isDesktopRowModal.value) {
+    return {
+      width: '100%',
+      maxWidth: '100%',
+      height: 'auto',
+      maxHeight: '92vh',
+    }
+  }
+
+  const maxWidth = Math.max(680, Math.floor(viewportWidth.value - 48))
+  const maxHeight = Math.max(360, Math.floor(viewportHeight.value - 48))
+
+  const width = Math.min(Math.max(rowModalWidth.value, ROW_MODAL_DEFAULT_MIN_WIDTH), maxWidth)
+  const height = rowModalHeight.value == null
+      ? Math.min(
+          Math.max(
+              ROW_MODAL_DEFAULT_HEIGHT,
+              Math.floor(viewportHeight.value * ROW_MODAL_DEFAULT_MAX_HEIGHT_RATIO)
+          ),
+          maxHeight
+      )
+      : Math.min(Math.max(rowModalHeight.value, ROW_MODAL_DEFAULT_MIN_HEIGHT), maxHeight)
+
+  return {
+    width: `${width}px`,
+    maxWidth: `${maxWidth}px`,
+    height: `${height}px`,
+    maxHeight: `${maxHeight}px`,
+  }
+})
+
 const jobLabel = computed(() => {
   if (!props.job) return 'Job Roster'
   return `${props.job.job_number || '—'} | ${props.job.title || 'Untitled Job'}`
 })
 
+function formatDateDisplay(value) {
+  const raw = String(value ?? '').trim()
+
+  if (!raw) {
+    return '—'
+  }
+
+  const datePart = raw.split('T')[0].replaceAll('/', '-')
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+    const [year, month, day] = datePart.split('-')
+    return `${month}-${day}-${year}`
+  }
+
+  if (/^\d{2}-\d{2}-\d{4}$/.test(datePart)) {
+    return datePart
+  }
+
+  return raw
+}
+
 const displayStartDate = computed(() => {
-  const text = String(props.job?.job_start_date || '')
-  if (!text) return '—'
-  return text.includes('T') ? text.slice(0, 10) : text
+  return formatDateDisplay(props.job?.job_start_date || '')
 })
 
 const summaryText = computed(() => {
@@ -224,11 +353,31 @@ watch(
     () => props.open,
     async (value) => {
       if (value && props.job?.id) {
+        rowModalOpen.value = false
         resetForm()
         await loadRoster()
+        return
+      }
+
+      if (!value) {
+        rowModalOpen.value = false
+        resetForm()
+        stopRowResize()
       }
     },
     { immediate: true }
+)
+
+watch(
+    () => rowModalOpen.value,
+    async (value) => {
+      if (!value) {
+        stopRowResize()
+        return
+      }
+
+      await applyRowModalSizeState()
+    }
 )
 
 watch(
@@ -242,7 +391,220 @@ watch(
 
 function noop() {}
 
+function getRowModalStorageKey() {
+  return `base-admin-modal-size:${ROW_MODAL_STORAGE_KEY}`
+}
+
+function buildCurrentRowModalSizePayload() {
+  return {
+    width: rowModalWidth.value,
+    height: rowModalHeight.value,
+  }
+}
+
+function writeRememberedRowModalSize(payload) {
+  const storageKey = getRowModalStorageKey()
+
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.localStorage.setItem(storageKey, JSON.stringify(payload))
+}
+
+function readRememberedRowModalSize() {
+  const storageKey = getRowModalStorageKey()
+
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  const raw = window.localStorage.getItem(storageKey)
+  if (!raw) {
+    return null
+  }
+
+  try {
+    const payload = JSON.parse(raw)
+    return payload && typeof payload === 'object' ? payload : null
+  } catch (_error) {
+    return null
+  }
+}
+
+function persistRowModalSize() {
+  if (!isDesktopRowModal.value) {
+    return
+  }
+
+  writeRememberedRowModalSize(buildCurrentRowModalSizePayload())
+}
+
+function syncViewport() {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  viewportWidth.value = window.innerWidth
+  viewportHeight.value = window.innerHeight
+
+  if (!isDesktopRowModal.value) {
+    rowModalHeight.value = null
+    return
+  }
+
+  const maxWidth = Math.max(680, Math.floor(viewportWidth.value - 48))
+  const maxHeight = Math.max(360, Math.floor(viewportHeight.value - 48))
+
+  rowModalWidth.value = Math.min(Math.max(rowModalWidth.value, ROW_MODAL_DEFAULT_MIN_WIDTH), maxWidth)
+
+  if (rowModalHeight.value != null) {
+    rowModalHeight.value = Math.min(Math.max(rowModalHeight.value, ROW_MODAL_DEFAULT_MIN_HEIGHT), maxHeight)
+  }
+}
+
+function resetRowModalSize() {
+  rowModalWidth.value = Math.min(
+      ROW_MODAL_DEFAULT_WIDTH,
+      Math.max(680, Math.floor(viewportWidth.value - 48))
+  )
+
+  if (!isDesktopRowModal.value) {
+    rowModalHeight.value = null
+    return
+  }
+
+  const maxHeight = Math.max(360, Math.floor(viewportHeight.value - 48))
+  rowModalHeight.value = Math.min(
+      Math.max(
+          ROW_MODAL_DEFAULT_HEIGHT,
+          Math.floor(viewportHeight.value * ROW_MODAL_DEFAULT_MAX_HEIGHT_RATIO)
+      ),
+      maxHeight
+  )
+}
+
+async function applyRowModalSizeState() {
+  await nextTick()
+  syncViewport()
+
+  if (!isDesktopRowModal.value) {
+    return
+  }
+
+  const remembered = readRememberedRowModalSize()
+  if (remembered && typeof remembered === 'object') {
+    const maxWidth = Math.max(680, Math.floor(viewportWidth.value - 48))
+    const maxHeight = Math.max(360, Math.floor(viewportHeight.value - 48))
+
+    rowModalWidth.value = Math.min(
+        Math.max(Number(remembered.width) || ROW_MODAL_DEFAULT_WIDTH, ROW_MODAL_DEFAULT_MIN_WIDTH),
+        maxWidth
+    )
+
+    if (remembered.height != null) {
+      rowModalHeight.value = Math.min(
+          Math.max(Number(remembered.height) || ROW_MODAL_DEFAULT_HEIGHT, ROW_MODAL_DEFAULT_MIN_HEIGHT),
+          maxHeight
+      )
+    } else {
+      rowModalHeight.value = null
+    }
+
+    return
+  }
+
+  resetRowModalSize()
+}
+
+function onViewportResize() {
+  syncViewport()
+  persistRowModalSize()
+}
+
+onMounted(() => {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  syncViewport()
+  window.addEventListener('resize', onViewportResize)
+})
+
+onBeforeUnmount(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('resize', onViewportResize)
+    window.removeEventListener('mousemove', onRowResizeMove)
+    window.removeEventListener('mouseup', stopRowResize)
+  }
+})
+
+function startRowResize(direction, event) {
+  if (!isDesktopRowModal.value) {
+    return
+  }
+
+  rowResizeState.value = {
+    direction,
+    startX: event.clientX,
+    startY: event.clientY,
+    startWidth: rowModalWidth.value,
+    startHeight: rowModalHeight.value == null
+        ? Math.min(
+            Math.max(
+                ROW_MODAL_DEFAULT_HEIGHT,
+                Math.floor(viewportHeight.value * ROW_MODAL_DEFAULT_MAX_HEIGHT_RATIO)
+            ),
+            Math.max(360, Math.floor(viewportHeight.value - 48))
+        )
+        : rowModalHeight.value,
+  }
+
+  window.addEventListener('mousemove', onRowResizeMove)
+  window.addEventListener('mouseup', stopRowResize)
+}
+
+function onRowResizeMove(event) {
+  if (!rowResizeState.value) {
+    return
+  }
+
+  const maxWidth = Math.max(680, Math.floor(viewportWidth.value - 48))
+  const maxHeight = Math.max(360, Math.floor(viewportHeight.value - 48))
+
+  const nextWidth = rowResizeState.value.startWidth + (event.clientX - rowResizeState.value.startX)
+  const nextHeight = rowResizeState.value.startHeight + (event.clientY - rowResizeState.value.startY)
+
+  if (rowResizeState.value.direction === 'right' || rowResizeState.value.direction === 'corner') {
+    rowModalWidth.value = Math.min(Math.max(nextWidth, ROW_MODAL_DEFAULT_MIN_WIDTH), maxWidth)
+  }
+
+  if (rowResizeState.value.direction === 'bottom' || rowResizeState.value.direction === 'corner') {
+    rowModalHeight.value = Math.min(Math.max(nextHeight, ROW_MODAL_DEFAULT_MIN_HEIGHT), maxHeight)
+  }
+
+  persistRowModalSize()
+}
+
+function stopRowResize() {
+  if (!rowResizeState.value) {
+    return
+  }
+
+  rowResizeState.value = null
+  persistRowModalSize()
+
+  window.removeEventListener('mousemove', onRowResizeMove)
+  window.removeEventListener('mouseup', stopRowResize)
+}
+
 function startCreate() {
+  resetForm()
+  rowModalOpen.value = true
+}
+
+function closeRowEditor() {
+  rowModalOpen.value = false
   resetForm()
 }
 
@@ -298,6 +660,7 @@ function editRow(row) {
   })
 
   error.value = ''
+  rowModalOpen.value = true
 }
 
 function normalizeDriverName(value) {
@@ -323,43 +686,49 @@ function duplicateDriverRow() {
   }) || null
 }
 
-function duplicateDriverMessage(row) {
-  const slot = row?.slot_label || row?.slot_type || 'another row'
-  const driver = String(form.driver_name || '').trim().replace(/\s+/g, ' ')
+function extractErrorMessage(errorLike) {
+  const payload = errorLike?.response?.data
+  const validation = payload?.errors
 
-  return `Driver "${driver}" is already used in ${slot}. Please choose a different driver name.`
+  if (validation && typeof validation === 'object') {
+    const firstKey = Object.keys(validation)[0]
+    const firstMessage = Array.isArray(validation[firstKey]) ? validation[firstKey][0] : validation[firstKey]
+    if (firstMessage) {
+      return String(firstMessage)
+    }
+  }
+
+  return payload?.message || errorLike?.message || 'Something went wrong.'
 }
 
 async function saveForm() {
-  if (!props.job?.id) return
-
-  error.value = ''
-
-  const duplicateRow = duplicateDriverRow()
-  if (duplicateRow) {
-    error.value = duplicateDriverMessage(duplicateRow)
+  const duplicate = duplicateDriverRow()
+  if (duplicate) {
+    const slot = duplicate?.slot_label || duplicate?.slot_type || 'another row'
+    error.value = `This driver is already used in ${slot}.`
     return
   }
 
   savingRow.value = true
-
-  const payload = {
-    slot_type: form.slot_type,
-    carrier_name: form.carrier_name || null,
-    driver_name: form.driver_name || null,
-    status: form.status,
-  }
+  error.value = ''
 
   try {
+    const payload = {
+      slot_type: form.slot_type,
+      carrier_name: form.carrier_name,
+      driver_name: form.driver_name,
+      status: form.status,
+    }
+
     if (form.id) {
       await updateJobAssignment(form.id, payload)
     } else {
       await createJobAssignment(props.job.id, payload)
     }
 
-    resetForm()
     await loadRoster()
     emit('updated')
+    closeRowEditor()
   } catch (e) {
     error.value = extractErrorMessage(e)
   } finally {
@@ -368,52 +737,73 @@ async function saveForm() {
 }
 
 async function deleteCurrentRow() {
-  if (!form.id) return
+  if (!form.id) {
+    return
+  }
 
-  saving.value = true
+  deletingRow.value = true
   error.value = ''
 
   try {
     await deleteJobAssignment(form.id)
-    resetForm()
     await loadRoster()
     emit('updated')
+    closeRowEditor()
   } catch (e) {
     error.value = extractErrorMessage(e)
   } finally {
-    saving.value = false
+    deletingRow.value = false
   }
-}
-
-function extractErrorMessage(e) {
-  return e?.response?.data?.message || Object.values(e?.response?.data?.errors || {})?.[0]?.[0] || e?.message || 'Request failed'
 }
 </script>
 
 <style scoped>
+.roster-editor-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(15, 23, 42, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+
+.roster-editor-card {
+  position: relative;
+  width: min(760px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 24px);
+  border-radius: 0.9rem;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
 .field-inline {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
   min-width: 0;
 }
 
-.field-input,
-.field-textarea {
+.field-input {
   width: 100%;
   min-width: 0;
   border: 1px solid #d1d5db;
   border-radius: 0.5rem;
   padding: 0.375rem 0.625rem;
   font-size: 0.75rem;
-  line-height: 1.2rem;
+  line-height: 1rem;
   color: #111827;
   background: #fff;
 }
 
-.field-input:focus,
-.field-textarea:focus {
+.field-input:focus {
   outline: none;
   border-color: #94a3b8;
 }

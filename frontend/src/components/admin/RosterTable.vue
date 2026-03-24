@@ -17,19 +17,19 @@
           :class="rowClass(row)"
       >
         <td class="td-cell">
-          <span class="slot-badge" :class="slotBadgeClass(row.slot_type)">
-            {{ row.slot_label || slotLabel(row.slot_type, row.slot_number) }}
-          </span>
+          <button
+              type="button"
+              class="position-edit-link"
+              @click="$emit('edit', row)"
+          >
+            <span class="slot-badge" :class="slotBadgeClass(row.slot_type)">
+              {{ row.slot_label || slotLabel(row.slot_type, row.slot_number) }}
+            </span>
+          </button>
         </td>
 
         <td class="td-cell">
-          <button
-              type="button"
-              class="source-link"
-              @click="$emit('edit', row)"
-          >
-            {{ displayValue(row.carrier_name) }}
-          </button>
+          {{ displayValue(row.carrier_name) }}
         </td>
 
         <td class="td-cell">
@@ -69,7 +69,7 @@ function displayValue(value) {
 
 function slotLabel(value, slotNumber) {
   return String(value || '').toLowerCase() === 'spare'
-      ? `Alternate ${slotNumber || ''}`.trim()
+      ? `On-Call ${slotNumber || ''}`.trim()
       : `Position ${slotNumber || ''}`.trim()
 }
 
@@ -84,9 +84,9 @@ function statusLabel(value, slotType) {
 
   if (normalized === 'ready') return 'Ready'
   if (normalized === 'pending_paperwork') return 'Pending paperwork'
-  if (normalized === 'open_alternate') return 'Open alternate'
+  if (normalized === 'open_alternate') return 'Open on-call'
 
-  return String(slotType || '').toLowerCase() === 'spare' ? 'Open alternate' : 'Open'
+  return String(slotType || '').toLowerCase() === 'spare' ? 'Open on-call' : 'Open'
 }
 
 function statusBadgeClass(value) {
@@ -187,18 +187,15 @@ function rowClass(row) {
   color: #4338ca;
 }
 
-.source-link {
+.position-edit-link {
   border: 0;
   background: transparent;
   padding: 0;
-  color: #334155;
-  text-decoration: underline;
-  text-underline-offset: 2px;
   cursor: pointer;
   font: inherit;
 }
 
-.source-link:hover {
-  color: #0f172a;
+.position-edit-link:hover .slot-badge {
+  filter: brightness(0.97);
 }
 </style>

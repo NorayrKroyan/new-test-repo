@@ -232,7 +232,7 @@ class JobAssignmentController extends Controller
             'slot_type' => $slotType,
             'slot_order' => (int) $assignment->slot_order,
             'slot_number' => $slotNumber,
-            'slot_label' => $slotType === 'spare' ? "Alternate {$slotNumber}" : "Position {$slotNumber}",
+            'slot_label' => $slotType === 'spare' ? "On-Call {$slotNumber}" : "Position {$slotNumber}",
             'carrier_name' => $carrierName !== '' ? $carrierName : null,
             'driver_name' => $driverName !== '' ? $driverName : null,
             'status' => $status,
@@ -452,7 +452,7 @@ class JobAssignmentController extends Controller
         return match ($status) {
             'ready' => 'Ready',
             'pending_paperwork' => 'Pending paperwork',
-            'open_alternate' => 'Open alternate',
+            'open_alternate' => 'Open on-call',
             default => 'Open',
         };
     }

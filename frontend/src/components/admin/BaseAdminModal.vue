@@ -22,10 +22,10 @@
           </button>
         </div>
 
-        <div class="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4">
+        <div class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-3 sm:px-4">
           <div v-if="loading" class="py-8 text-center text-sm text-gray-500">Loading...</div>
 
-          <div v-else class="space-y-2">
+          <div v-else class="min-w-0 space-y-2">
             <slot />
           </div>
         </div>
@@ -111,6 +111,11 @@ const props = defineProps({
   recordId: { type: [Number, String, null], default: null },
   saveLabel: { type: String, default: 'Save' },
   sizeMemoryKey: { type: String, default: '' },
+  defaultWidth: { type: Number, default: 1088 },
+  defaultHeight: { type: [Number, null], default: null },
+  minWidth: { type: Number, default: 720 },
+  minHeight: { type: Number, default: 420 },
+  maxHeightRatio: { type: Number, default: 0.86 },
 })
 
 const emit = defineEmits(['close', 'save', 'delete'])
@@ -119,16 +124,34 @@ const confirmingDelete = ref(false)
 const modalRef = ref(null)
 const viewportWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1280)
 const viewportHeight = ref(typeof window !== 'undefined' ? window.innerHeight : 900)
-const modalWidth = ref(1088)
+const modalWidth = ref(props.defaultWidth)
 const modalHeight = ref(null)
 const resizeState = ref(null)
 
 const DESKTOP_BREAKPOINT = 640
-const DEFAULT_WIDTH = 1088
-const DEFAULT_MAX_HEIGHT_RATIO = 0.86
-const DEFAULT_MIN_HEIGHT = 420
-const DEFAULT_MIN_WIDTH = 720
 const DEFAULT_STORAGE_PREFIX = 'base-admin-modal-size:'
+
+const resolvedMinWidth = computed(() => Math.max(Number(props.minWidth || 720), 480))
+const resolvedMinHeight = computed(() => Math.max(Number(props.minHeight || 420), 320))
+const resolvedDefaultWidth = computed(() => Math.max(Number(props.defaultWidth || 1088), resolvedMinWidth.value))
+const resolvedDefaultHeight = computed(() => {
+  const value = Number(props.defaultHeight)
+
+  if (!Number.isFinite(value) || value <= 0) {
+    return null
+  }
+
+  return Math.max(value, resolvedMinHeight.value)
+})
+const resolvedMaxHeightRatio = computed(() => {
+  const value = Number(props.maxHeightRatio)
+
+  if (!Number.isFinite(value) || value <= 0) {
+    return 0.86
+  }
+
+  return value
+})
 
 const isDesktop = computed(() => viewportWidth.value >= DESKTOP_BREAKPOINT)
 
@@ -137,7 +160,7 @@ const desktopModalClass = computed(() => {
     return ''
   }
 
-  return 'sm:min-w-[720px] sm:min-h-[420px]'
+  return ''
 })
 
 const desktopModalStyle = computed(() => {
@@ -147,10 +170,24 @@ const desktopModalStyle = computed(() => {
 
   const maxWidth = Math.max(820, Math.floor(viewportWidth.value - 48))
   const maxHeight = Math.max(520, Math.floor(viewportHeight.value - 48))
-  const width = Math.min(Math.max(modalWidth.value, DEFAULT_MIN_WIDTH), maxWidth)
+  const width = Math.min(Math.max(modalWidth.value, resolvedMinWidth.value), maxWidth)
+
   const height = modalHeight.value == null
-      ? Math.min(Math.max(Math.floor(viewportHeight.value * DEFAULT_MAX_HEIGHT_RATIO), DEFAULT_MIN_HEIGHT), maxHeight)
-      : Math.min(Math.max(modalHeight.value, DEFAULT_MIN_HEIGHT), maxHeight)
+      ? (
+          resolvedDefaultHeight.value == null
+              ? Math.min(
+                  Math.max(
+                      Math.floor(viewportHeight.value * resolvedMaxHeightRatio.value),
+                      resolvedMinHeight.value
+                  ),
+                  maxHeight
+              )
+              : Math.min(
+                  Math.max(resolvedDefaultHeight.value, resolvedMinHeight.value),
+                  maxHeight
+              )
+      )
+      : Math.min(Math.max(modalHeight.value, resolvedMinHeight.value), maxHeight)
 
   return {
     width: `${width}px`,
@@ -238,16 +275,25 @@ function syncViewport() {
   const maxWidth = Math.max(820, Math.floor(viewportWidth.value - 48))
   const maxHeight = Math.max(520, Math.floor(viewportHeight.value - 48))
 
-  modalWidth.value = Math.min(Math.max(modalWidth.value, DEFAULT_MIN_WIDTH), maxWidth)
+  modalWidth.value = Math.min(Math.max(modalWidth.value, resolvedMinWidth.value), maxWidth)
 
   if (modalHeight.value != null) {
-    modalHeight.value = Math.min(Math.max(modalHeight.value, DEFAULT_MIN_HEIGHT), maxHeight)
+    modalHeight.value = Math.min(Math.max(modalHeight.value, resolvedMinHeight.value), maxHeight)
   }
 }
 
 function resetModalSize() {
-  modalWidth.value = Math.min(DEFAULT_WIDTH, Math.max(DEFAULT_MIN_WIDTH, viewportWidth.value - 48))
-  modalHeight.value = null
+  modalWidth.value = Math.min(
+      resolvedDefaultWidth.value,
+      Math.max(resolvedMinWidth.value, viewportWidth.value - 48)
+  )
+
+  modalHeight.value = resolvedDefaultHeight.value == null
+      ? null
+      : Math.min(
+          Math.max(resolvedDefaultHeight.value, resolvedMinHeight.value),
+          Math.max(520, Math.floor(viewportHeight.value - 48))
+      )
 }
 
 function restoreRememberedSize() {
@@ -266,13 +312,13 @@ function restoreRememberedSize() {
   const nextHeight = Number(payload?.height)
 
   if (Number.isFinite(nextWidth) && nextWidth > 0) {
-    modalWidth.value = Math.min(Math.max(nextWidth, DEFAULT_MIN_WIDTH), maxWidth)
+    modalWidth.value = Math.min(Math.max(nextWidth, resolvedMinWidth.value), maxWidth)
   }
 
   if (Number.isFinite(nextHeight) && nextHeight > 0) {
-    modalHeight.value = Math.min(Math.max(nextHeight, DEFAULT_MIN_HEIGHT), maxHeight)
+    modalHeight.value = Math.min(Math.max(nextHeight, resolvedMinHeight.value), maxHeight)
   } else {
-    modalHeight.value = null
+    modalHeight.value = resolvedDefaultHeight.value
   }
 
   return true
@@ -341,11 +387,11 @@ function onResizeMove(event) {
   const nextHeight = resizeState.value.startHeight + (event.clientY - resizeState.value.startY)
 
   if (resizeState.value.direction === 'right' || resizeState.value.direction === 'corner') {
-    modalWidth.value = Math.min(Math.max(nextWidth, DEFAULT_MIN_WIDTH), maxWidth)
+    modalWidth.value = Math.min(Math.max(nextWidth, resolvedMinWidth.value), maxWidth)
   }
 
   if (resizeState.value.direction === 'bottom' || resizeState.value.direction === 'corner') {
-    modalHeight.value = Math.min(Math.max(nextHeight, DEFAULT_MIN_HEIGHT), maxHeight)
+    modalHeight.value = Math.min(Math.max(nextHeight, resolvedMinHeight.value), maxHeight)
   }
 
   persistModalSize()

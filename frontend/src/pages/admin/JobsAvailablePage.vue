@@ -301,12 +301,11 @@ function formatDateDisplay(value) {
 
   if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
     const [year, month, day] = datePart.split('-')
-    return `${day}-${month}-${year}`
+    return `${month}-${day}-${year}`
   }
 
   if (/^\d{2}-\d{2}-\d{4}$/.test(datePart)) {
-    const [month, day, year] = datePart.split('-')
-    return `${day}-${month}-${year}`
+    return datePart
   }
 
   return raw
