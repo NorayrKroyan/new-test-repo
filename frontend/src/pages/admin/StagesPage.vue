@@ -318,7 +318,10 @@ const options = {
   fixedHeader: true,
   autoWidth: false,
   scrollX: true,
-  order: [[0, 'asc']],
+  order: [
+    [1, 'asc'],
+    [2, 'asc'],
+  ],
   language: {
     emptyTable: 'No stages found',
     zeroRecords: 'No stages found',
@@ -596,6 +599,11 @@ onBeforeUnmount(() => {
   padding-bottom: 2px !important;
   vertical-align: middle;
   line-height: 1.05rem;
+}
+
+.stages-page table.dataTable thead th:nth-child(3),
+.stages-page table.dataTable tbody td:nth-child(3) {
+  text-align: left !important;
 }
 
 .stages-page table.dataTable tbody tr:hover {
