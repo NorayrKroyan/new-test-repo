@@ -13,12 +13,55 @@
           Continue with Google
         </button>
 
+        <div class="relative">
+          <div class="absolute inset-0 flex items-center">
+            <div class="w-full border-t border-slate-200"></div>
+          </div>
+          <div class="relative flex justify-center">
+            <span class="bg-white px-3 text-xs font-medium uppercase tracking-wide text-slate-400">or</span>
+          </div>
+        </div>
+
         <div v-if="googleError" class="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">
           {{ googleError }}
         </div>
 
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Email</label>
+          <input
+              v-model="form.email"
+              type="email"
+              autocomplete="email"
+              class="h-11 w-full rounded-xl border border-slate-300 px-3 outline-none focus:border-slate-500"
+          />
+        </div>
+
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Password</label>
+          <input
+              v-model="form.password"
+              type="password"
+              autocomplete="current-password"
+              class="h-11 w-full rounded-xl border border-slate-300 px-3 outline-none focus:border-slate-500"
+              @keyup.enter="submit"
+          />
+        </div>
+
+        <div v-if="err" class="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          {{ err }}
+        </div>
+
+        <button
+            type="button"
+            class="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            :disabled="loading"
+            @click="submit"
+        >
+          {{ loading ? 'Signing in...' : 'Login' }}
+        </button>
+
         <p class="text-center text-xs text-slate-400">
-          Admin access is available through Google sign-in.
+          Admin access is available through Google sign-in or manual login.
         </p>
       </div>
     </div>
@@ -26,11 +69,20 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
-import { useRoute } from 'vue-router';
-import { adminGoogleLoginUrl } from '../../api/admin';
+import { computed, reactive, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { adminGoogleLoginUrl, adminLogin } from '../../api/admin';
 
+const router = useRouter();
 const route = useRoute();
+
+const loading = ref(false);
+const err = ref('');
+
+const form = reactive({
+  email: '',
+  password: '',
+});
 
 const googleErrorMessages = {
   google_auth_failed: 'Google sign-in failed.',
@@ -49,5 +101,31 @@ const googleError = computed(() => {
 
 function signInWithGoogle() {
   window.location.assign(adminGoogleLoginUrl());
+}
+
+async function submit() {
+  if (!form.email || !form.password) {
+    err.value = 'Email and password are required.';
+    return;
+  }
+
+  loading.value = true;
+  err.value = '';
+
+  try {
+    await adminLogin({
+      email: form.email,
+      password: form.password,
+    });
+
+    await router.push('/admin/dashboard');
+  } catch (e) {
+    err.value =
+        e?.response?.data?.message ||
+        e?.response?.data?.errors?.email?.[0] ||
+        'Login failed';
+  } finally {
+    loading.value = false;
+  }
 }
 </script>
