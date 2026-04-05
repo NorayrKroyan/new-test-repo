@@ -258,15 +258,35 @@
           :sms-history-lead-id="smsHistoryLeadId"
           :sms-history-loading="smsHistoryLoading"
           :sms-history-error="smsHistoryError"
+          :contract-sending="contractSending"
+          :contract-history="contractHistoryRows"
+          :contract-history-lead-id="contractHistoryLeadId"
+          :contract-history-loading="contractHistoryLoading"
+          :contract-history-error="contractHistoryError"
           @close="closeModal"
           @save="saveRow"
           @delete="deleteCurrent"
           @sync-contact="syncCurrentLeadNow"
+          @send-contract="openSendContractModal"
           @change-selected-qualification-script="onSelectedQualificationScriptChange"
           @qualify="reloadQualificationNow"
           @save-answer="saveQualificationAnswerNow"
           @complete-qualification="completeQualificationNow"
           @apply-recommended-stage="applyQualificationStageNow"
+      />
+
+      <LeadSendContractModal
+          v-if="contractSendOpen"
+          :key="contractModalKey"
+          :open="contractSendOpen"
+          :loading="contractTemplatesLoading"
+          :sending="contractSending"
+          :templates="contractTemplates"
+          :form="contractForm"
+          :error="contractError"
+          @close="closeSendContractModal"
+          @send="sendCurrentLeadContract"
+          @update:form="onContractFormUpdate"
       />
 
       <LeadDuplicateModal
@@ -303,6 +323,7 @@ import Responsive from 'datatables.net-responsive'
 import FixedHeader from 'datatables.net-fixedheader'
 import AdminLayout from '../../layouts/AdminLayout.vue'
 import LeadModal from '../../components/admin/LeadModal.vue'
+import LeadSendContractModal from '../../components/admin/LeadSendContractModal.vue'
 import LeadDuplicateModal from '../../components/admin/LeadDuplicateModal.vue'
 import LeadMergeModal from '../../components/admin/LeadMergeModal.vue'
 import {
@@ -315,6 +336,8 @@ import {
   fetchLeadMergePreview,
   fetchLeadQualificationSessions,
   fetchLeadCallHistory,
+  fetchLeadContractHistory,
+  fetchLeadContractTemplates,
   fetchLeadSmsHistory,
   fetchLeads,
   fetchQualificationScripts,
@@ -323,6 +346,7 @@ import {
   mergeLeadGroup,
   runLeadAutoDedup,
   saveLead,
+  saveLeadContract,
   saveLeadQualificationAnswer,
   startLeadQualification,
   syncLeadContact,
@@ -354,6 +378,7 @@ const successMessage = ref('')
 const tableWrap = ref(null)
 
 const leadModalKey = ref(0)
+const contractModalKey = ref(0)
 const duplicateModalKey = ref(0)
 const mergeModalKey = ref(0)
 
@@ -370,6 +395,16 @@ const mergeLoading = ref(false)
 const mergeSaving = ref(false)
 const mergeRowId = ref(null)
 const mergePreview = ref(null)
+
+const contractSendOpen = ref(false)
+const contractSending = ref(false)
+const contractTemplatesLoading = ref(false)
+const contractError = ref('')
+const contractTemplates = ref([])
+const contractHistoryLoading = ref(false)
+const contractHistoryError = ref('')
+const contractHistoryLeadId = ref(null)
+const contractHistoryRows = ref([])
 
 const qualificationLoading = ref(false)
 const qualificationSaving = ref(false)
@@ -407,6 +442,7 @@ let funnelLoadSeq = 0
 let qualificationLoadSeq = 0
 let callHistoryLoadSeq = 0
 let smsHistoryLoadSeq = 0
+let contractHistoryLoadSeq = 0
 
 const form = reactive({
   id: null,
@@ -430,6 +466,17 @@ const form = reactive({
   notes: '',
   duplicate_of_lead_id: null,
   duplicate_basis: '',
+})
+
+const contractForm = reactive({
+  source_type: 'template',
+  template_key: '',
+  recipient_name: '',
+  recipient_email: '',
+  document_name: 'Lead Contract',
+  subject: '',
+  message: '',
+  file: null,
 })
 
 const mobileTotalPages = computed(() => {
@@ -549,6 +596,26 @@ function resetSmsHistoryState() {
   smsHistoryError.value = ''
   smsHistoryLeadId.value = null
   smsHistoryRows.value = []
+}
+
+function resetContractHistoryState() {
+  contractHistoryLoading.value = false
+  contractHistoryError.value = ''
+  contractHistoryLeadId.value = null
+  contractHistoryRows.value = []
+}
+
+function resetContractForm() {
+  Object.assign(contractForm, {
+    source_type: 'template',
+    template_key: '',
+    recipient_name: form.full_name || '',
+    recipient_email: form.email || '',
+    document_name: 'Lead Contract',
+    subject: '',
+    message: '',
+    file: null,
+  })
 }
 
 function clearMessages() {
@@ -1102,6 +1169,65 @@ async function loadSmsHistoryForLead(id) {
   }
 }
 
+async function loadContractHistoryForLead(id) {
+  const seq = ++contractHistoryLoadSeq
+
+  if (!id) {
+    resetContractHistoryState()
+    return
+  }
+
+  contractHistoryLeadId.value = Number(id)
+  contractHistoryLoading.value = true
+  contractHistoryError.value = ''
+  contractHistoryRows.value = []
+
+  try {
+    const data = await fetchLeadContractHistory(id)
+
+    if (seq !== contractHistoryLoadSeq || Number(form.id || 0) !== Number(id)) {
+      return
+    }
+
+    const responseLeadId = Number(data?.meta?.lead_id || 0)
+    if (responseLeadId !== Number(id)) {
+      contractHistoryRows.value = []
+      contractHistoryError.value = 'Contract history response returned for the wrong lead.'
+      return
+    }
+
+    contractHistoryRows.value = Array.isArray(data?.data)
+        ? data.data.filter((item) => Number(item?.lead_id || 0) === Number(id))
+        : []
+  } catch (e) {
+    if (seq !== contractHistoryLoadSeq || Number(form.id || 0) !== Number(id)) {
+      return
+    }
+
+    contractHistoryRows.value = []
+    contractHistoryError.value = extractErrorMessage(e)
+  } finally {
+    if (seq === contractHistoryLoadSeq && Number(form.id || 0) === Number(id)) {
+      contractHistoryLoading.value = false
+    }
+  }
+}
+
+async function loadContractTemplates() {
+  contractTemplatesLoading.value = true
+  contractError.value = ''
+
+  try {
+    const data = await fetchLeadContractTemplates()
+    contractTemplates.value = Array.isArray(data?.data) ? [...data.data] : []
+  } catch (e) {
+    contractTemplates.value = []
+    contractError.value = extractErrorMessage(e)
+  } finally {
+    contractTemplatesLoading.value = false
+  }
+}
+
 async function loadRows() {
   const seq = ++loadSeq
   loading.value = true
@@ -1165,9 +1291,14 @@ function openCreate() {
   qualificationLoadSeq += 1
   callHistoryLoadSeq += 1
   smsHistoryLoadSeq += 1
+  contractHistoryLoadSeq += 1
   resetQualificationState()
   resetCallHistoryState()
   resetSmsHistoryState()
+  resetContractHistoryState()
+  resetContractForm()
+  contractSendOpen.value = false
+  contractError.value = ''
   leadModalKey.value += 1
   open.value = true
 }
@@ -1202,9 +1333,14 @@ function editRow(row) {
   qualificationLoadSeq += 1
   callHistoryLoadSeq += 1
   smsHistoryLoadSeq += 1
+  contractHistoryLoadSeq += 1
   resetQualificationState()
   resetCallHistoryState()
   resetSmsHistoryState()
+  resetContractHistoryState()
+  resetContractForm()
+  contractSendOpen.value = false
+  contractError.value = ''
   leadModalKey.value += 1
   open.value = true
 
@@ -1212,6 +1348,7 @@ function editRow(row) {
     loadQualificationForLead(row.id, { preferDefaultScript: true })
     loadCallHistoryForLead(row.id)
     loadSmsHistoryForLead(row.id)
+    loadContractHistoryForLead(row.id)
   }
 }
 
@@ -1364,9 +1501,13 @@ function closeModal() {
   qualificationLoadSeq += 1
   callHistoryLoadSeq += 1
   smsHistoryLoadSeq += 1
+  contractHistoryLoadSeq += 1
   resetQualificationState()
   resetCallHistoryState()
   resetSmsHistoryState()
+  resetContractHistoryState()
+  contractSendOpen.value = false
+  contractError.value = ''
 }
 
 async function saveRow() {
@@ -1380,9 +1521,13 @@ async function saveRow() {
     qualificationLoadSeq += 1
     callHistoryLoadSeq += 1
     smsHistoryLoadSeq += 1
+    contractHistoryLoadSeq += 1
     resetQualificationState()
     resetCallHistoryState()
     resetSmsHistoryState()
+    resetContractHistoryState()
+    contractSendOpen.value = false
+    contractError.value = ''
     applyDialpadSaveMessages(response, 'Lead saved.')
     await loadRows()
   } catch (e) {
@@ -1410,6 +1555,70 @@ async function syncCurrentLeadNow() {
   }
 }
 
+function onContractFormUpdate(value) {
+  Object.assign(contractForm, {
+    source_type: value?.source_type || 'template',
+    template_key: value?.template_key || '',
+    recipient_name: value?.recipient_name || '',
+    recipient_email: value?.recipient_email || '',
+    document_name: value?.document_name || 'Lead Contract',
+    subject: value?.subject || '',
+    message: value?.message || '',
+    file: value?.file || null,
+  })
+}
+
+async function openSendContractModal() {
+  if (!form.id) return
+
+  clearMessages()
+  resetContractForm()
+  contractError.value = ''
+  contractModalKey.value += 1
+  contractSendOpen.value = true
+
+  await loadContractTemplates()
+}
+
+function closeSendContractModal() {
+  contractSendOpen.value = false
+  contractError.value = ''
+}
+
+async function sendCurrentLeadContract() {
+  if (!form.id || contractSending.value) return
+
+  contractSending.value = true
+  contractError.value = ''
+
+  try {
+    const payload = new FormData()
+    payload.append('source_type', contractForm.source_type || 'template')
+    payload.append('recipient_name', contractForm.recipient_name || '')
+    payload.append('recipient_email', contractForm.recipient_email || '')
+    payload.append('document_name', contractForm.document_name || 'Lead Contract')
+    payload.append('subject', contractForm.subject || '')
+    payload.append('message', contractForm.message || '')
+
+    if (contractForm.source_type === 'template') {
+      payload.append('template_key', contractForm.template_key || '')
+    }
+
+    if (contractForm.source_type === 'upload' && contractForm.file) {
+      payload.append('file', contractForm.file)
+    }
+
+    await saveLeadContract(form.id, payload)
+    contractSendOpen.value = false
+    successMessage.value = 'Contract sent.'
+    await loadContractHistoryForLead(form.id)
+  } catch (e) {
+    contractError.value = extractErrorMessage(e)
+  } finally {
+    contractSending.value = false
+  }
+}
+
 async function deleteCurrent() {
   if (!form.id) return
 
@@ -1423,9 +1632,13 @@ async function deleteCurrent() {
     qualificationLoadSeq += 1
     callHistoryLoadSeq += 1
     smsHistoryLoadSeq += 1
+    contractHistoryLoadSeq += 1
     resetQualificationState()
     resetCallHistoryState()
     resetSmsHistoryState()
+    resetContractHistoryState()
+    contractSendOpen.value = false
+    contractError.value = ''
     successMessage.value = 'Lead deleted.'
     await loadRows()
   } catch (e) {

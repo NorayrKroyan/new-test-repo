@@ -38,15 +38,25 @@
           <div class="mb-2 flex items-center justify-between gap-2">
             <div class="text-xs font-semibold text-gray-900">Lead Info</div>
 
-            <button
-                v-if="isEditMode"
-                type="button"
-                class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                :disabled="syncSaving || saving || deleting"
-                @click="$emit('sync-contact')"
-            >
-              {{ syncSaving ? 'Syncing...' : 'Sync Contact' }}
-            </button>
+            <div v-if="isEditMode" class="flex items-center gap-2">
+              <button
+                  type="button"
+                  class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                  :disabled="contractSending || syncSaving || saving || deleting"
+                  @click="$emit('send-contract')"
+              >
+                {{ contractSending ? 'Sending...' : 'Send Contract' }}
+              </button>
+
+              <button
+                  type="button"
+                  class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                  :disabled="syncSaving || contractSending || saving || deleting"
+                  @click="$emit('sync-contact')"
+              >
+                {{ syncSaving ? 'Syncing...' : 'Sync Contact' }}
+              </button>
+            </div>
           </div>
 
           <div class="grid grid-cols-1 gap-y-1.5 md:grid-cols-2 md:gap-x-4">
@@ -281,6 +291,76 @@
                       </td>
                       <td class="px-2 py-0 truncate" :title="smsTextTitle(item)">
                         {{ smsTextLabel(item) }}
+                      </td>
+                    </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="isEditMode" class="md:col-span-2">
+              <div class="overflow-hidden rounded-lg border border-slate-200 bg-white">
+                <div class="flex items-center justify-between gap-2 border-b border-slate-200 px-3 py-2">
+                  <div class="text-xs font-semibold text-slate-900">Contract History</div>
+                  <div class="text-[11px] text-slate-500">
+                    {{ contractHistoryLoading ? 'Loading...' : `${visibleContractHistory.length} record${visibleContractHistory.length === 1 ? '' : 's'}` }}
+                  </div>
+                </div>
+
+                <div v-if="contractHistoryLoading" class="px-3 py-3 text-xs text-slate-600">
+                  Loading contract history...
+                </div>
+
+                <div v-else-if="contractHistoryError" class="px-3 py-3 text-xs text-rose-700">
+                  {{ contractHistoryError }}
+                </div>
+
+                <div v-else-if="!visibleContractHistory.length" class="px-3 py-3 text-xs text-slate-600">
+                  No contract history for this lead.
+                </div>
+
+                <div v-else class="overflow-hidden">
+                  <table class="w-full table-fixed border-collapse text-left text-[10px] leading-[13px] text-slate-700">
+                    <thead class="bg-slate-50 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                    <tr class="h-[23px]">
+                      <th class="w-[126px] border-b border-slate-200 px-2">Started</th>
+                      <th class="w-[150px] border-b border-slate-200 px-2">Source</th>
+                      <th class="w-[86px] border-b border-slate-200 px-2">Status</th>
+                      <th class="w-[170px] border-b border-slate-200 px-2">Recipient</th>
+                      <th class="w-[170px] border-b border-slate-200 px-2">Document</th>
+                      <th class="border-b border-slate-200 px-2">BoldSign ID</th>
+                    </tr>
+                    </thead>
+
+                    <tbody class="bg-white">
+                    <tr
+                        v-for="item in visibleContractHistory"
+                        :key="item.id"
+                        class="h-[23px] border-b border-slate-100 hover:bg-slate-50"
+                    >
+                      <td class="px-2 py-0 whitespace-nowrap truncate" :title="formatContractHistoryStarted(item.sent_at || item.created_at)">
+                        {{ formatContractHistoryStarted(item.sent_at || item.created_at) }}
+                      </td>
+                      <td class="px-2 py-0 whitespace-nowrap truncate" :title="contractSourceTitle(item)">
+                        {{ contractSourceLabel(item) }}
+                      </td>
+                      <td class="px-2 py-0 whitespace-nowrap">
+                        <span
+                            class="inline-flex items-center rounded-full border px-1.5 py-0 text-[10px] leading-4"
+                            :class="contractStatusBadgeClass(item.status || item.boldsign_status)"
+                        >
+                          {{ compactContractStatusLabel(item.status || item.boldsign_status) }}
+                        </span>
+                      </td>
+                      <td class="px-2 py-0 whitespace-nowrap truncate" :title="contractRecipientTitle(item)">
+                        {{ contractRecipientLabel(item) }}
+                      </td>
+                      <td class="px-2 py-0 whitespace-nowrap truncate" :title="contractDocumentTitle(item)">
+                        {{ contractDocumentLabel(item) }}
+                      </td>
+                      <td class="px-2 py-0 truncate" :title="contractBoldSignIdTitle(item)">
+                        {{ contractBoldSignIdLabel(item) }}
                       </td>
                     </tr>
                     </tbody>
@@ -661,6 +741,26 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  contractSending: {
+    type: Boolean,
+    default: false,
+  },
+  contractHistory: {
+    type: Array,
+    default: () => [],
+  },
+  contractHistoryLeadId: {
+    type: [String, Number],
+    default: null,
+  },
+  contractHistoryLoading: {
+    type: Boolean,
+    default: false,
+  },
+  contractHistoryError: {
+    type: String,
+    default: '',
+  },
 })
 
 const isEditMode = computed(() => Boolean(props.form?.id))
@@ -706,6 +806,19 @@ const visibleSmsHistory = computed(() => {
   }
 
   return (Array.isArray(props.smsHistory) ? props.smsHistory : []).filter((item) => {
+    return Number(item?.lead_id || 0) === currentLeadId
+  })
+})
+
+const visibleContractHistory = computed(() => {
+  const currentLeadId = Number(props.form?.id || 0)
+  const responseLeadId = Number(props.contractHistoryLeadId || 0)
+
+  if (!currentLeadId || !responseLeadId || currentLeadId !== responseLeadId) {
+    return []
+  }
+
+  return (Array.isArray(props.contractHistory) ? props.contractHistory : []).filter((item) => {
     return Number(item?.lead_id || 0) === currentLeadId
   })
 })
@@ -1025,6 +1138,102 @@ function smsTextTitle(item) {
   return smsTextLabel(item)
 }
 
+function formatContractHistoryStarted(value) {
+  return formatCallHistoryStarted(value)
+}
+
+function contractSourceLabel(item) {
+  const sourceType = String(item?.source_type ?? '').trim().toLowerCase()
+
+  if (sourceType === 'template') {
+    return item?.template_name || 'Template'
+  }
+
+  if (sourceType === 'upload') {
+    return item?.uploaded_original_name || 'Upload'
+  }
+
+  return sourceType ? formatStatus(sourceType) : '—'
+}
+
+function contractSourceTitle(item) {
+  return contractSourceLabel(item)
+}
+
+function compactContractStatusLabel(value) {
+  const normalized = String(value ?? '').trim().toLowerCase()
+
+  if (!normalized) return '—'
+  if (normalized === 'preparing') return 'Preparing'
+  if (normalized === 'sent') return 'Sent'
+  if (normalized === 'viewed') return 'Viewed'
+  if (normalized === 'completed') return 'Completed'
+  if (normalized === 'declined') return 'Declined'
+  if (normalized === 'expired') return 'Expired'
+  if (normalized === 'cancelled') return 'Cancelled'
+  if (normalized === 'failed') return 'Failed'
+
+  return formatStatus(normalized)
+}
+
+function contractStatusBadgeClass(value) {
+  const normalized = String(value ?? '').trim().toLowerCase()
+
+  if (['sent', 'viewed'].includes(normalized)) {
+    return 'border-emerald-200 bg-emerald-50 text-emerald-700'
+  }
+
+  if (normalized === 'completed') {
+    return 'border-sky-200 bg-sky-50 text-sky-700'
+  }
+
+  if (['declined', 'expired', 'cancelled', 'failed'].includes(normalized)) {
+    return 'border-rose-200 bg-rose-50 text-rose-700'
+  }
+
+  if (normalized === 'preparing') {
+    return 'border-amber-200 bg-amber-50 text-amber-700'
+  }
+
+  return 'border-slate-200 bg-slate-50 text-slate-600'
+}
+
+function contractRecipientLabel(item) {
+  const name = String(item?.recipient_name ?? '').trim()
+  const email = String(item?.recipient_email ?? '').trim()
+
+  if (name && email) {
+    return `${name} | ${email}`
+  }
+
+  return name || email || '—'
+}
+
+function contractRecipientTitle(item) {
+  return contractRecipientLabel(item)
+}
+
+function contractDocumentLabel(item) {
+  return (
+      item?.document_name ||
+      item?.template_name ||
+      item?.uploaded_original_name ||
+      '—'
+  )
+}
+
+function contractDocumentTitle(item) {
+  return contractDocumentLabel(item)
+}
+
+function contractBoldSignIdLabel(item) {
+  return item?.boldsign_document_id || '—'
+}
+
+function contractBoldSignIdTitle(item) {
+  return contractBoldSignIdLabel(item)
+}
+
 function clampSplitWeight(value) {
   const width = splitPaneRef.value?.getBoundingClientRect()?.width || Math.max(960, viewportWidth.value - 96)
   const safeWidth = Math.max(width, 1)
@@ -1148,6 +1357,7 @@ defineEmits([
   'save',
   'delete',
   'sync-contact',
+  'send-contract',
   'qualify',
   'change-selected-qualification-script',
   'save-answer',

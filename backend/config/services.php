@@ -47,4 +47,10 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI'),
     ],
 
+    'boldsign' => [
+        'api_key' => env('BOLDSIGN_API_KEY'),
+        'base_url' => env('BOLDSIGN_BASE_URL', 'https://api.boldsign.com'),
+        'webhook_secret' => env('BOLDSIGN_WEBHOOK_SECRET'),
+    ],
+
 ];

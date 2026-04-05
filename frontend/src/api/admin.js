@@ -120,6 +120,26 @@ export async function fetchLeadSmsHistory(id, params = {}) {
     return data
 }
 
+export async function fetchLeadContractHistory(id) {
+    const { data } = await http.get(`/api/admin/leads/${id}/contracts`)
+    return data
+}
+
+export async function fetchLeadContractTemplates() {
+    const { data } = await http.get('/api/admin/lead-contract-templates')
+    return data
+}
+
+export async function saveLeadContract(id, payload) {
+    await initCsrf()
+    const { data } = await http.post(`/api/admin/leads/${id}/contracts/send`, payload, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    })
+    return data
+}
+
 export async function deleteLead(id) {
     const { data } = await http.delete(`/api/admin/leads/${id}`)
     return data

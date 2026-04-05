@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\Admin\DialpadSmsWebhookController;
 use App\Http\Controllers\Api\Admin\JobAssignmentController;
 use App\Http\Controllers\Api\Admin\JobAvailableController;
 use App\Http\Controllers\Api\Admin\LeadController;
+use App\Http\Controllers\Api\Admin\LeadContractController;
 use App\Http\Controllers\Api\Admin\LeadMapController;
 use App\Http\Controllers\Api\Admin\LeadQualificationController;
 use App\Http\Controllers\Api\Admin\QualificationScriptController;
@@ -16,9 +17,11 @@ use App\Http\Controllers\Api\Admin\StageController;
 use App\Http\Controllers\Api\Carrier\AuthController as CarrierAuthController;
 use App\Http\Controllers\Api\Customer\AuthController as CustomerAuthController;
 use App\Http\Controllers\Api\GoogleAuthController;
+use App\Http\Controllers\Api\Webhooks\BoldSignWebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/webhooks/dialpad/sms', [DialpadSmsWebhookController::class, 'store']);
+Route::post('/webhooks/boldsign', [BoldSignWebhookController::class, 'store']);
 
 Route::middleware('web')->prefix('auth/google')->group(function () {
     Route::get('/redirect/{role}', [GoogleAuthController::class, 'redirect'])
@@ -52,6 +55,9 @@ Route::prefix('admin')->group(function () {
         Route::post('/leads/{lead}/sync-contact', [LeadController::class, 'syncContact']);
         Route::get('/leads/{lead}/call-history', [LeadController::class, 'callHistory']);
         Route::get('/leads/{lead}/sms-history', [LeadController::class, 'smsHistory']);
+        Route::get('/lead-contract-templates', [LeadContractController::class, 'templateOptions']);
+        Route::get('/leads/{lead}/contracts', [LeadContractController::class, 'index']);
+        Route::post('/leads/{lead}/contracts/send', [LeadContractController::class, 'send']);
 
         Route::get('/lead-map/markers', [LeadMapController::class, 'markers']);
         Route::post('/lead-map/geocode-missing', [LeadMapController::class, 'geocodeMissing']);
