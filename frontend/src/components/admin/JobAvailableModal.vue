@@ -109,6 +109,7 @@
               v-model="form.boldsign_template_ids"
               multiple
               class="field-input min-h-[96px]"
+              :disabled="boldsignTemplatesLoading"
             >
               <option
                 v-for="template in boldsignTemplates"
@@ -119,6 +120,12 @@
               </option>
             </select>
             <InlineFieldHelp text="Choose which BoldSign document templates sales reps are allowed to send for leads assigned to this job." />
+          </div>
+          <div class="mt-1 text-[10px] leading-4 text-slate-500" v-if="boldsignTemplatesLoading">
+            Loading BoldSign templates...
+          </div>
+          <div class="mt-1 text-[10px] leading-4 text-slate-500" v-else-if="!boldsignTemplates.length">
+            No active BoldSign templates were found. Sync templates first, then choose the ones allowed for this job.
           </div>
         </ModalFieldRow>
 
@@ -191,6 +198,10 @@ const props = defineProps({
   boldsignTemplates: {
     type: Array,
     default: () => [],
+  },
+  boldsignTemplatesLoading: {
+    type: Boolean,
+    default: false,
   },
   rosterSummary: {
     type: Object,

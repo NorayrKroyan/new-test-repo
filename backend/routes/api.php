@@ -58,6 +58,7 @@ Route::prefix('admin')->group(function () {
         Route::get('/leads/{lead}/sms-history', [LeadController::class, 'smsHistory']);
         Route::get('/lead-contract-templates', [LeadContractController::class, 'templateOptions']);
         Route::get('/leads/{lead}/contracts', [LeadContractController::class, 'index']);
+        Route::get('/leads/{lead}/contracts/{contract}/document-url', [LeadContractController::class, 'documentUrl']);
         Route::post('/leads/{lead}/contracts/send', [LeadContractController::class, 'send']);
 
         Route::get('/lead-map/markers', [LeadMapController::class, 'markers']);

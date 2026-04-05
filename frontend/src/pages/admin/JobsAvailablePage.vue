@@ -131,7 +131,7 @@
           :form="form"
           :roster-summary="activeRosterSummary"
           :boldsign-templates-loading="boldsignTemplatesLoading"
-          :boldsign-template-options="boldsignTemplateOptions"
+          :boldsign-templates="boldsignTemplateOptions"
           @close="closeModal"
           @save="saveRow"
           @delete="deleteCurrent"

@@ -125,8 +125,13 @@ export async function fetchLeadContractHistory(id) {
     return data
 }
 
-export async function fetchLeadContractTemplates() {
-    const { data } = await http.get('/api/admin/lead-contract-templates')
+export async function fetchLeadContractTemplates(params = {}) {
+    const { data } = await http.get('/api/admin/lead-contract-templates', { params })
+    return data
+}
+
+export async function fetchLeadContractDocumentUrl(leadId, contractId) {
+    const { data } = await http.get(`/api/admin/leads/${leadId}/contracts/${contractId}/document-url`)
     return data
 }
 

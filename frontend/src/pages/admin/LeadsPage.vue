@@ -282,6 +282,8 @@
           :loading="contractTemplatesLoading"
           :sending="contractSending"
           :templates="contractTemplates"
+          :template-only="contractUploadLocked"
+          :template-lock-reason="contractUploadLocked ? 'This lead is assigned to a job. Only the BoldSign templates allowed for that job can be sent.' : ''"
           :form="contractForm"
           :error="contractError"
           @close="closeSendContractModal"
@@ -401,6 +403,7 @@ const contractSending = ref(false)
 const contractTemplatesLoading = ref(false)
 const contractError = ref('')
 const contractTemplates = ref([])
+const contractTemplatesMeta = ref({})
 const contractHistoryLoading = ref(false)
 const contractHistoryError = ref('')
 const contractHistoryLeadId = ref(null)
@@ -478,6 +481,13 @@ const contractForm = reactive({
   message: '',
   file: null,
 })
+
+const contractTemplateJobAvailableId = computed(() => {
+  const value = Number(contractTemplatesMeta.value?.job_available_id || 0)
+  return value > 0 ? value : null
+})
+
+const contractUploadLocked = computed(() => !!contractTemplateJobAvailableId.value)
 
 const mobileTotalPages = computed(() => {
   const total = Math.ceil(rows.value.length / mobilePageSize.value)
@@ -606,6 +616,8 @@ function resetContractHistoryState() {
 }
 
 function resetContractForm() {
+  contractTemplatesMeta.value = {}
+
   Object.assign(contractForm, {
     source_type: 'template',
     template_key: '',
@@ -1218,10 +1230,20 @@ async function loadContractTemplates() {
   contractError.value = ''
 
   try {
-    const data = await fetchLeadContractTemplates()
+    const data = await fetchLeadContractTemplates({
+      lead_id: form.id || undefined,
+    })
+
     contractTemplates.value = Array.isArray(data?.data) ? [...data.data] : []
+    contractTemplatesMeta.value = data?.meta || {}
+
+    if (contractUploadLocked.value) {
+      contractForm.source_type = 'template'
+      contractForm.file = null
+    }
   } catch (e) {
     contractTemplates.value = []
+    contractTemplatesMeta.value = {}
     contractError.value = extractErrorMessage(e)
   } finally {
     contractTemplatesLoading.value = false
@@ -1557,14 +1579,14 @@ async function syncCurrentLeadNow() {
 
 function onContractFormUpdate(value) {
   Object.assign(contractForm, {
-    source_type: value?.source_type || 'template',
+    source_type: contractUploadLocked.value ? 'template' : (value?.source_type || 'template'),
     template_key: value?.template_key || '',
     recipient_name: value?.recipient_name || '',
     recipient_email: value?.recipient_email || '',
     document_name: value?.document_name || 'Lead Contract',
     subject: value?.subject || '',
     message: value?.message || '',
-    file: value?.file || null,
+    file: contractUploadLocked.value ? null : (value?.file || null),
   })
 }
 
@@ -1593,18 +1615,22 @@ async function sendCurrentLeadContract() {
 
   try {
     const payload = new FormData()
-    payload.append('source_type', contractForm.source_type || 'template')
+    payload.append('source_type', contractUploadLocked.value ? 'template' : (contractForm.source_type || 'template'))
     payload.append('recipient_name', contractForm.recipient_name || '')
     payload.append('recipient_email', contractForm.recipient_email || '')
     payload.append('document_name', contractForm.document_name || 'Lead Contract')
     payload.append('subject', contractForm.subject || '')
     payload.append('message', contractForm.message || '')
 
-    if (contractForm.source_type === 'template') {
+    if (contractTemplateJobAvailableId.value) {
+      payload.append('job_available_id', String(contractTemplateJobAvailableId.value))
+    }
+
+    if ((contractUploadLocked.value ? 'template' : contractForm.source_type) === 'template') {
       payload.append('template_key', contractForm.template_key || '')
     }
 
-    if (contractForm.source_type === 'upload' && contractForm.file) {
+    if (!contractUploadLocked.value && contractForm.source_type === 'upload' && contractForm.file) {
       payload.append('file', contractForm.file)
     }
 

@@ -20,15 +20,23 @@
           </ModalFieldRow>
 
           <ModalFieldRow label="Source Type:" class="md:col-span-1">
-            <select v-model="localForm.source_type" class="w-full max-w-[220px] rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs">
+            <select
+              v-model="localForm.source_type"
+              class="w-full max-w-[220px] rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs"
+              :disabled="templateOnly"
+            >
               <option value="template">Existing Contract</option>
-              <option value="upload">Upload File</option>
+              <option v-if="!templateOnly" value="upload">Upload File</option>
             </select>
           </ModalFieldRow>
 
           <ModalFieldRow label="Document Name:" class="md:col-span-1">
             <input v-model="localForm.document_name" class="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs" />
           </ModalFieldRow>
+
+          <div v-if="templateOnly && templateLockReason" class="md:col-span-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-700">
+            {{ templateLockReason }}
+          </div>
 
           <ModalFieldRow v-if="localForm.source_type === 'template'" label="Contract:" class="md:col-span-2">
             <select v-model="localForm.template_key" class="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs">
@@ -70,6 +78,8 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
   sending: { type: Boolean, default: false },
   templates: { type: Array, default: () => [] },
+  templateOnly: { type: Boolean, default: false },
+  templateLockReason: { type: String, default: '' },
   form: {
     type: Object,
     default: () => ({
@@ -106,14 +116,14 @@ watch(
   () => props.form,
   (value) => {
     Object.assign(localForm, {
-      source_type: value?.source_type || 'template',
+      source_type: props.templateOnly ? 'template' : (value?.source_type || 'template'),
       template_key: value?.template_key || '',
       recipient_name: value?.recipient_name || '',
       recipient_email: value?.recipient_email || '',
       document_name: value?.document_name || 'Lead Contract',
       subject: value?.subject || '',
       message: value?.message || '',
-      file: value?.file || null,
+      file: props.templateOnly ? null : (value?.file || null),
     })
   },
   { immediate: true, deep: true }
@@ -122,7 +132,11 @@ watch(
 watch(
   localForm,
   (value) => {
-    emit('update:form', { ...value })
+    emit('update:form', {
+      ...value,
+      source_type: props.templateOnly ? 'template' : value.source_type,
+      file: props.templateOnly ? null : value.file,
+    })
   },
   { deep: true }
 )
