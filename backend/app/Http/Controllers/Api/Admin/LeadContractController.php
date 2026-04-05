@@ -10,14 +10,14 @@ use Illuminate\Http\Request;
 class LeadContractController extends Controller
 {
     public function __construct(
-        protected LeadContractService $contracts
+        protected LeadContractService $contracts,
     ) {
     }
 
     public function index(Lead $lead)
     {
         return response()->json([
-            'data' => $this->contracts->historyForLead($lead),
+            'data' => $this->contracts->historyForLead($lead, $requestUser = request()->user()),
             'meta' => [
                 'lead_id' => $lead->id,
             ],
@@ -33,9 +33,7 @@ class LeadContractController extends Controller
             $lead = Lead::query()->find($leadId);
         }
 
-        $jobAvailableId = $request->filled('job_available_id')
-            ? (int) $request->input('job_available_id')
-            : null;
+        $jobAvailableId = $request->filled('job_available_id') ? (int) $request->input('job_available_id') : null;
 
         return response()->json([
             'data' => $this->contracts->templateOptions($lead, $jobAvailableId),
@@ -52,6 +50,7 @@ class LeadContractController extends Controller
             'source_type' => ['required', 'in:template,upload'],
             'template_key' => ['nullable', 'string', 'max:255'],
             'template_id' => ['nullable', 'string', 'max:255'],
+            'job_available_id' => ['nullable', 'integer', 'min:1'],
             'recipient_name' => ['nullable', 'string', 'max:255'],
             'recipient_email' => ['required', 'email', 'max:255'],
             'document_name' => ['nullable', 'string', 'max:255'],
@@ -70,6 +69,17 @@ class LeadContractController extends Controller
         return response()->json([
             'ok' => true,
             'data' => $contract,
+        ]);
+    }
+
+    public function documentUrl(Lead $lead, int $contract)
+    {
+        return response()->json([
+            'data' => $this->contracts->managementDocumentUrlForLead($lead, $contract, request()->user()),
+            'meta' => [
+                'lead_id' => $lead->id,
+                'contract_id' => $contract,
+            ],
         ]);
     }
 }

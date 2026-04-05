@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\JobAssignment;
 use App\Models\JobAvailable;
+use App\Models\JobBoldSignTemplate;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -21,6 +22,7 @@ class JobAvailableController extends Controller
 
         $rows = $this->applyRosterCounts(
             JobAvailable::query()
+                ->with('boldsignTemplates')
                 ->when($q !== '', function (Builder $query) use ($q) {
                     $query->where(function (Builder $sub) use ($q) {
                         $sub->where('job_number', 'like', "%{$q}%")
@@ -61,20 +63,32 @@ class JobAvailableController extends Controller
         $data['created_by_admin_id'] = $request->user()->id;
 
         $row = DB::transaction(function () use ($data) {
+            $templateIds = $data['boldsign_template_ids'] ?? [];
+            unset($data['boldsign_template_ids']);
+
             $job = JobAvailable::create($data);
             $this->syncGeneratedRosterRows($job);
+            $this->syncBoldSignTemplates($job, $templateIds);
 
             return $job;
         });
 
-        $row = $this->applyRosterCounts(JobAvailable::query()->whereKey($row->id))->firstOrFail();
+        $row = $this->applyRosterCounts(
+            JobAvailable::query()
+                ->with('boldsignTemplates')
+                ->whereKey($row->id)
+        )->firstOrFail();
 
         return response()->json($this->presentJob($row), 201);
     }
 
     public function show(JobAvailable $jobs_available)
     {
-        $job = $this->applyRosterCounts(JobAvailable::query()->whereKey($jobs_available->id))->firstOrFail();
+        $job = $this->applyRosterCounts(
+            JobAvailable::query()
+                ->with('boldsignTemplates')
+                ->whereKey($jobs_available->id)
+        )->firstOrFail();
 
         return response()->json($this->presentJob($job));
     }
@@ -84,11 +98,21 @@ class JobAvailableController extends Controller
         $data = $this->validateJob($request);
 
         DB::transaction(function () use ($jobs_available, $data) {
+            $templateIds = $data['boldsign_template_ids'] ?? [];
+            unset($data['boldsign_template_ids']);
+
             $jobs_available->update($data);
-            $this->syncGeneratedRosterRows($jobs_available->fresh());
+            $fresh = $jobs_available->fresh();
+
+            $this->syncGeneratedRosterRows($fresh);
+            $this->syncBoldSignTemplates($fresh, $templateIds);
         });
 
-        $job = $this->applyRosterCounts(JobAvailable::query()->whereKey($jobs_available->id))->firstOrFail();
+        $job = $this->applyRosterCounts(
+            JobAvailable::query()
+                ->with('boldsignTemplates')
+                ->whereKey($jobs_available->id)
+        )->firstOrFail();
 
         return response()->json($this->presentJob($job));
     }
@@ -125,10 +149,18 @@ class JobAvailableController extends Controller
             'customer_company' => ['nullable', 'string', 'max:255'],
             'posted_at' => ['nullable', 'date'],
             'expires_at' => ['nullable', 'date'],
+            'boldsign_template_ids' => ['nullable', 'array'],
+            'boldsign_template_ids.*' => ['string', 'max:255'],
         ]);
 
         $data['primary_required'] = (int) ($data['primary_required'] ?? 0);
         $data['spare_allowed'] = (int) ($data['spare_allowed'] ?? 0);
+        $data['boldsign_template_ids'] = collect($data['boldsign_template_ids'] ?? [])
+            ->map(fn ($value) => trim((string) $value))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
 
         if (!array_key_exists('status', $data) || trim((string) $data['status']) === '') {
             $data['status'] = 'open';
@@ -155,6 +187,10 @@ class JobAvailableController extends Controller
         $spareOverfill = max(0, $spareFilled - $spareAllowed);
         $fillPercent = $primaryRequired > 0 ? round(($primaryFilled / $primaryRequired) * 100, 1) : 0.0;
 
+        $templateIds = $job->relationLoaded('boldsignTemplates')
+            ? $job->boldsignTemplates->pluck('template_id')->map(fn ($value) => trim((string) $value))->filter()->values()->all()
+            : $job->boldsignTemplates()->pluck('template_id')->map(fn ($value) => trim((string) $value))->filter()->values()->all();
+
         return [
             'id' => $job->id,
             'job_number' => $job->job_number,
@@ -177,6 +213,7 @@ class JobAvailableController extends Controller
             'customer_company' => $job->customer_company,
             'posted_at' => optional($job->posted_at)->toDateString(),
             'expires_at' => optional($job->expires_at)->toDateString(),
+            'boldsign_template_ids' => $templateIds,
             'roster_summary' => [
                 'primary_required' => $primaryRequired,
                 'primary_filled' => $primaryFilled,
@@ -221,7 +258,6 @@ class JobAvailableController extends Controller
     {
         $this->normalizeSlotOrders($job, 'primary');
         $this->normalizeSlotOrders($job, 'spare');
-
         $this->syncSlotTypeRows($job, 'primary', (int) ($job->primary_required ?? 0));
         $this->syncSlotTypeRows($job, 'spare', (int) ($job->spare_allowed ?? 0));
     }
@@ -313,5 +349,28 @@ class JobAvailableController extends Controller
     private function defaultStatusForSlot(string $slotType): string
     {
         return $slotType === 'spare' ? 'open_alternate' : 'open';
+    }
+
+    private function syncBoldSignTemplates(JobAvailable $job, array $templateIds): void
+    {
+        $templateIds = collect($templateIds)
+            ->map(fn ($value) => trim((string) $value))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $job->boldsignTemplates()->delete();
+
+        if (empty($templateIds)) {
+            return;
+        }
+
+        $job->boldsignTemplates()->createMany(
+            array_map(
+                fn (string $templateId) => ['template_id' => $templateId],
+                $templateIds
+            )
+        );
     }
 }

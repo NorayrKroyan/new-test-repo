@@ -2,9 +2,12 @@
 
 namespace App\Services;
 
+use App\Models\JobAssignment;
 use App\Models\JobBoldSignTemplate;
 use App\Models\Lead;
 use App\Models\LeadContractRequest;
+use App\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -13,7 +16,7 @@ use Throwable;
 class LeadContractService
 {
     public function __construct(
-        protected BoldSignService $boldSign
+        protected BoldSignService $boldSign,
     ) {
     }
 
@@ -22,7 +25,6 @@ class LeadContractService
         $templates = $this->boldSign->templateOptions();
 
         $resolvedJobAvailableId = $this->resolveJobAvailableId($lead, $jobAvailableId);
-
         if (!$resolvedJobAvailableId) {
             return $templates;
         }
@@ -41,17 +43,21 @@ class LeadContractService
 
         return array_values(array_filter($templates, function (array $template) use ($allowedTemplateIds) {
             $templateId = trim((string) ($template['template_id'] ?? ''));
-
             return $templateId !== '' && in_array($templateId, $allowedTemplateIds, true);
         }));
     }
 
-    public function historyForLead(Lead $lead)
+    public function historyForLead(Lead $lead, ?User $viewer = null): array
     {
+        $canAccessSensitiveDocuments = $this->canAccessSensitiveDocuments($viewer);
+
         return LeadContractRequest::query()
             ->where('lead_id', $lead->id)
             ->latest('id')
-            ->get();
+            ->get()
+            ->map(fn (LeadContractRequest $row) => $this->presentHistoryRow($row, $canAccessSensitiveDocuments))
+            ->values()
+            ->all();
     }
 
     public function sendForLead(Lead $lead, array $data, ?UploadedFile $file, ?int $userId = null): LeadContractRequest
@@ -63,7 +69,6 @@ class LeadContractService
         }
 
         $recipientEmail = $this->resolveRecipientEmail($lead, $data);
-
         if ($recipientEmail === '') {
             throw ValidationException::withMessages([
                 'recipient_email' => 'Recipient email is required.',
@@ -71,7 +76,6 @@ class LeadContractService
         }
 
         $recipientName = $this->resolveRecipientName($lead, $data);
-
         if ($recipientName === '') {
             throw ValidationException::withMessages([
                 'recipient_name' => 'Recipient name is required.',
@@ -80,6 +84,10 @@ class LeadContractService
 
         $sourceType = (string) ($data['source_type'] ?? 'template');
         $templateSelection = trim((string) ($data['template_id'] ?? $data['template_key'] ?? ''));
+        $resolvedJobAvailableId = $this->resolveJobAvailableId(
+            $lead,
+            isset($data['job_available_id']) ? (int) $data['job_available_id'] : null
+        );
 
         if ($sourceType === 'template' && $templateSelection === '') {
             throw ValidationException::withMessages([
@@ -93,14 +101,29 @@ class LeadContractService
             ]);
         }
 
-        $selectedTemplate = null;
-
-        if ($sourceType === 'template') {
-            $selectedTemplate = $this->boldSign->resolveTemplateSelection($templateSelection);
-            $this->assertTemplateAllowedForLead($selectedTemplate, $lead);
+        if ($sourceType === 'upload' && $resolvedJobAvailableId) {
+            throw ValidationException::withMessages([
+                'source_type' => 'Job-assigned leads must use one of the allowed BoldSign templates.',
+            ]);
         }
 
-        return DB::transaction(function () use ($lead, $data, $file, $userId, $recipientEmail, $recipientName, $sourceType, $selectedTemplate, $templateSelection) {
+        $selectedTemplate = null;
+        if ($sourceType === 'template') {
+            $selectedTemplate = $this->boldSign->resolveTemplateSelection($templateSelection);
+            $this->assertTemplateAllowedForLead($selectedTemplate, $lead, $resolvedJobAvailableId);
+        }
+
+        return DB::transaction(function () use (
+            $lead,
+            $data,
+            $file,
+            $userId,
+            $recipientEmail,
+            $recipientName,
+            $sourceType,
+            $selectedTemplate,
+            $templateSelection
+        ) {
             $request = LeadContractRequest::create([
                 'lead_id' => $lead->id,
                 'created_by_user_id' => $userId,
@@ -199,7 +222,6 @@ class LeadContractService
         }
 
         $eventKey = strtolower(trim((string) $eventName));
-
         $status = match ($eventKey) {
             'sent', 'documentsent' => 'sent',
             'viewed', 'documentviewed' => 'viewed',
@@ -220,6 +242,33 @@ class LeadContractService
         ])->save();
 
         return $request->fresh();
+    }
+
+    public function managementDocumentUrlForLead(Lead $lead, int $contractId, ?User $viewer = null): array
+    {
+        if (!$this->canAccessSensitiveDocuments($viewer)) {
+            throw new AuthorizationException('Only management can access completed contract documents.');
+        }
+
+        $request = LeadContractRequest::query()
+            ->where('lead_id', $lead->id)
+            ->whereKey($contractId)
+            ->firstOrFail();
+
+        $documentUrl = trim((string) ($request->boldsign_document_url ?? ''));
+        if ($documentUrl === '') {
+            throw ValidationException::withMessages([
+                'document' => 'No completed BoldSign document URL is available for this record.',
+            ]);
+        }
+
+        return [
+            'id' => $request->id,
+            'lead_id' => $request->lead_id,
+            'document_name' => $request->document_name,
+            'status' => $request->status,
+            'boldsign_document_url' => $documentUrl,
+        ];
     }
 
     protected function resolveRecipientEmail(Lead $lead, array $data): string
@@ -264,20 +313,32 @@ class LeadContractService
         }
 
         $leadJobAvailableId = (int) ($lead?->job_available_id ?? 0);
+        if ($leadJobAvailableId > 0) {
+            return $leadJobAvailableId;
+        }
 
-        return $leadJobAvailableId > 0 ? $leadJobAvailableId : null;
+        if ($lead?->id) {
+            $assignedJobId = (int) JobAssignment::query()
+                ->where('lead_id', $lead->id)
+                ->orderByDesc('id')
+                ->value('job_available_id');
+
+            if ($assignedJobId > 0) {
+                return $assignedJobId;
+            }
+        }
+
+        return null;
     }
 
-    protected function assertTemplateAllowedForLead(array $selectedTemplate, Lead $lead): void
+    protected function assertTemplateAllowedForLead(array $selectedTemplate, Lead $lead, ?int $jobAvailableId = null): void
     {
-        $jobAvailableId = $this->resolveJobAvailableId($lead);
-
-        if (!$jobAvailableId) {
+        $resolvedJobAvailableId = $this->resolveJobAvailableId($lead, $jobAvailableId);
+        if (!$resolvedJobAvailableId) {
             return;
         }
 
         $templateId = trim((string) ($selectedTemplate['template_id'] ?? ''));
-
         if ($templateId === '') {
             throw ValidationException::withMessages([
                 'template_key' => 'Selected BoldSign template could not be resolved.',
@@ -285,7 +346,7 @@ class LeadContractService
         }
 
         $allowed = JobBoldSignTemplate::query()
-            ->where('job_available_id', $jobAvailableId)
+            ->where('job_available_id', $resolvedJobAvailableId)
             ->where('template_id', $templateId)
             ->exists();
 
@@ -294,5 +355,28 @@ class LeadContractService
                 'template_key' => 'This template is not allowed for the selected job.',
             ]);
         }
+    }
+
+    protected function presentHistoryRow(LeadContractRequest $request, bool $includeSensitive): array
+    {
+        $row = $request->toArray();
+
+        if (!$includeSensitive) {
+            unset(
+                $row['boldsign_document_url'],
+                $row['boldsign_response_json'],
+                $row['prefill_payload_json'],
+                $row['uploaded_storage_path']
+            );
+        }
+
+        $row['can_open_document'] = $includeSensitive && filled($request->boldsign_document_url);
+
+        return $row;
+    }
+
+    protected function canAccessSensitiveDocuments(?User $viewer): bool
+    {
+        return strtolower(trim((string) ($viewer?->role ?? ''))) === 'super_admin';
     }
 }

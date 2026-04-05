@@ -130,6 +130,8 @@
           :deleting="deleting"
           :form="form"
           :roster-summary="activeRosterSummary"
+          :boldsign-templates-loading="boldsignTemplatesLoading"
+          :boldsign-template-options="boldsignTemplateOptions"
           @close="closeModal"
           @save="saveRow"
           @delete="deleteCurrent"
@@ -156,7 +158,7 @@ import FixedHeader from 'datatables.net-fixedheader'
 import AdminLayout from '../../layouts/AdminLayout.vue'
 import JobAvailableModal from '../../components/admin/JobAvailableModal.vue'
 import RosterModal from '../../components/admin/RosterModal.vue'
-import { deleteJobAvailable, fetchJobsAvailable, saveJobAvailable } from '../../api/admin'
+import { deleteJobAvailable, fetchBoldSignTemplates, fetchJobsAvailable, saveJobAvailable } from '../../api/admin'
 
 DataTable.use(DataTablesCore)
 DataTable.use(Responsive)
@@ -170,9 +172,11 @@ const rosterJob = ref(null)
 const saving = ref(false)
 const deleting = ref(false)
 const loading = ref(false)
+const boldsignTemplatesLoading = ref(false)
 const err = ref('')
 const tableWrap = ref(null)
 const jobModalKey = ref(0)
+const boldsignTemplateOptions = ref([])
 
 const mobilePage = ref(1)
 const mobilePageSize = ref(10)
@@ -197,6 +201,7 @@ const form = reactive({
   job_start_date: '',
   primary_required: 0,
   spare_allowed: 0,
+  boldsign_template_ids: [],
 })
 
 const mobileTotalPages = computed(() => {
@@ -254,6 +259,7 @@ function resetForm() {
     job_start_date: '',
     primary_required: 0,
     spare_allowed: 0,
+    boldsign_template_ids: [],
   })
 }
 
@@ -549,6 +555,19 @@ const options = {
   },
 }
 
+async function loadBoldSignTemplates() {
+  boldsignTemplatesLoading.value = true
+
+  try {
+    const data = await fetchBoldSignTemplates({ active_only: true })
+    boldsignTemplateOptions.value = Array.isArray(data?.data) ? data.data : []
+  } catch (_e) {
+    boldsignTemplateOptions.value = []
+  } finally {
+    boldsignTemplatesLoading.value = false
+  }
+}
+
 async function loadRows() {
   const seq = ++loadSeq
   loading.value = true
@@ -598,6 +617,7 @@ function editRow(row) {
     job_start_date: row.job_start_date || '',
     primary_required: row.primary_required || 0,
     spare_allowed: row.spare_allowed || 0,
+    boldsign_template_ids: Array.isArray(row.boldsign_template_ids) ? [...row.boldsign_template_ids] : [],
   })
 
   jobModalKey.value += 1
@@ -687,6 +707,7 @@ async function saveRow() {
       job_start_date: form.job_start_date || null,
       primary_required: form.primary_required || 0,
       spare_allowed: form.spare_allowed || 0,
+      boldsign_template_ids: Array.isArray(form.boldsign_template_ids) ? [...form.boldsign_template_ids] : [],
     }, form.id)
     open.value = false
     resetForm()
@@ -743,6 +764,7 @@ watch(q, () => {
 
 onMounted(() => {
   loadRows()
+  loadBoldSignTemplates()
 
   if (tableWrap.value) {
     tableWrap.value.addEventListener('click', handleTableClick)
