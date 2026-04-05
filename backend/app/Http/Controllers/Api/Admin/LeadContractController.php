@@ -24,10 +24,25 @@ class LeadContractController extends Controller
         ]);
     }
 
-    public function templateOptions()
+    public function templateOptions(Request $request)
     {
+        $lead = null;
+        $leadId = (int) $request->integer('lead_id');
+
+        if ($leadId > 0) {
+            $lead = Lead::query()->find($leadId);
+        }
+
+        $jobAvailableId = $request->filled('job_available_id')
+            ? (int) $request->input('job_available_id')
+            : null;
+
         return response()->json([
-            'data' => $this->contracts->templateOptions(),
+            'data' => $this->contracts->templateOptions($lead, $jobAvailableId),
+            'meta' => [
+                'lead_id' => $lead?->id,
+                'job_available_id' => $jobAvailableId ?: ($lead->job_available_id ?? null),
+            ],
         ]);
     }
 
@@ -36,6 +51,7 @@ class LeadContractController extends Controller
         $data = $request->validate([
             'source_type' => ['required', 'in:template,upload'],
             'template_key' => ['nullable', 'string', 'max:255'],
+            'template_id' => ['nullable', 'string', 'max:255'],
             'recipient_name' => ['nullable', 'string', 'max:255'],
             'recipient_email' => ['required', 'email', 'max:255'],
             'document_name' => ['nullable', 'string', 'max:255'],

@@ -59,4 +59,9 @@ class JobAvailable extends Model
     {
         return $this->hasMany(JobAssignment::class, 'job_available_id');
     }
+
+    public function boldsignTemplates()
+    {
+        return $this->hasMany(JobBoldSignTemplate::class, 'job_available_id');
+    }
 }

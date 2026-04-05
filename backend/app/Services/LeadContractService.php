@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\JobBoldSignTemplate;
 use App\Models\Lead;
 use App\Models\LeadContractRequest;
 use Illuminate\Http\UploadedFile;
@@ -16,9 +17,33 @@ class LeadContractService
     ) {
     }
 
-    public function templateOptions(): array
+    public function templateOptions(?Lead $lead = null, ?int $jobAvailableId = null): array
     {
-        return $this->boldSign->templateOptions();
+        $templates = $this->boldSign->templateOptions();
+
+        $resolvedJobAvailableId = $this->resolveJobAvailableId($lead, $jobAvailableId);
+
+        if (!$resolvedJobAvailableId) {
+            return $templates;
+        }
+
+        $allowedTemplateIds = JobBoldSignTemplate::query()
+            ->where('job_available_id', $resolvedJobAvailableId)
+            ->pluck('template_id')
+            ->map(fn ($value) => trim((string) $value))
+            ->filter()
+            ->values()
+            ->all();
+
+        if (empty($allowedTemplateIds)) {
+            return [];
+        }
+
+        return array_values(array_filter($templates, function (array $template) use ($allowedTemplateIds) {
+            $templateId = trim((string) ($template['template_id'] ?? ''));
+
+            return $templateId !== '' && in_array($templateId, $allowedTemplateIds, true);
+        }));
     }
 
     public function historyForLead(Lead $lead)
@@ -38,6 +63,7 @@ class LeadContractService
         }
 
         $recipientEmail = $this->resolveRecipientEmail($lead, $data);
+
         if ($recipientEmail === '') {
             throw ValidationException::withMessages([
                 'recipient_email' => 'Recipient email is required.',
@@ -45,6 +71,7 @@ class LeadContractService
         }
 
         $recipientName = $this->resolveRecipientName($lead, $data);
+
         if ($recipientName === '') {
             throw ValidationException::withMessages([
                 'recipient_name' => 'Recipient name is required.',
@@ -52,8 +79,9 @@ class LeadContractService
         }
 
         $sourceType = (string) ($data['source_type'] ?? 'template');
+        $templateSelection = trim((string) ($data['template_id'] ?? $data['template_key'] ?? ''));
 
-        if ($sourceType === 'template' && blank($data['template_key'] ?? null)) {
+        if ($sourceType === 'template' && $templateSelection === '') {
             throw ValidationException::withMessages([
                 'template_key' => 'Please select a contract template.',
             ]);
@@ -66,16 +94,18 @@ class LeadContractService
         }
 
         $selectedTemplate = null;
+
         if ($sourceType === 'template') {
-            $selectedTemplate = $this->boldSign->resolveTemplateSelection((string) $data['template_key']);
+            $selectedTemplate = $this->boldSign->resolveTemplateSelection($templateSelection);
+            $this->assertTemplateAllowedForLead($selectedTemplate, $lead);
         }
 
-        return DB::transaction(function () use ($lead, $data, $file, $userId, $recipientEmail, $recipientName, $sourceType, $selectedTemplate) {
+        return DB::transaction(function () use ($lead, $data, $file, $userId, $recipientEmail, $recipientName, $sourceType, $selectedTemplate, $templateSelection) {
             $request = LeadContractRequest::create([
                 'lead_id' => $lead->id,
                 'created_by_user_id' => $userId,
                 'source_type' => $sourceType,
-                'template_key' => $sourceType === 'template' ? ($data['template_key'] ?? null) : null,
+                'template_key' => $sourceType === 'template' ? (($selectedTemplate['key'] ?? null) ?: $templateSelection) : null,
                 'template_id' => $sourceType === 'template' ? ($selectedTemplate['template_id'] ?? null) : null,
                 'template_name' => $sourceType === 'template' ? ($selectedTemplate['template_name'] ?? null) : null,
                 'uploaded_original_name' => $file?->getClientOriginalName(),
@@ -111,7 +141,7 @@ class LeadContractService
             try {
                 if ($sourceType === 'template') {
                     $response = $this->boldSign->sendFromTemplate([
-                        'template_key' => $data['template_key'],
+                        'template_key' => $selectedTemplate['key'] ?? $templateSelection,
                         'template_id' => $selectedTemplate['template_id'] ?? null,
                         'recipient_name' => $recipientName,
                         'recipient_email' => $recipientEmail,
@@ -122,6 +152,7 @@ class LeadContractService
                     ]);
                 } else {
                     $storedPath = $file->store('lead-contract-uploads', 'local');
+
                     $request->forceFill([
                         'uploaded_storage_path' => $storedPath,
                     ])->save();
@@ -217,11 +248,51 @@ class LeadContractService
     {
         foreach ($values as $value) {
             $value = is_string($value) ? trim($value) : $value;
+
             if ($value !== null && $value !== '') {
                 return (string) $value;
             }
         }
 
         return null;
+    }
+
+    protected function resolveJobAvailableId(?Lead $lead = null, ?int $jobAvailableId = null): ?int
+    {
+        if ($jobAvailableId && $jobAvailableId > 0) {
+            return $jobAvailableId;
+        }
+
+        $leadJobAvailableId = (int) ($lead?->job_available_id ?? 0);
+
+        return $leadJobAvailableId > 0 ? $leadJobAvailableId : null;
+    }
+
+    protected function assertTemplateAllowedForLead(array $selectedTemplate, Lead $lead): void
+    {
+        $jobAvailableId = $this->resolveJobAvailableId($lead);
+
+        if (!$jobAvailableId) {
+            return;
+        }
+
+        $templateId = trim((string) ($selectedTemplate['template_id'] ?? ''));
+
+        if ($templateId === '') {
+            throw ValidationException::withMessages([
+                'template_key' => 'Selected BoldSign template could not be resolved.',
+            ]);
+        }
+
+        $allowed = JobBoldSignTemplate::query()
+            ->where('job_available_id', $jobAvailableId)
+            ->where('template_id', $templateId)
+            ->exists();
+
+        if (!$allowed) {
+            throw ValidationException::withMessages([
+                'template_key' => 'This template is not allowed for the selected job.',
+            ]);
+        }
     }
 }
