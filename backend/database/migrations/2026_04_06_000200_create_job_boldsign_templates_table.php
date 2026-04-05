@@ -10,12 +10,12 @@ return new class extends Migration
     {
         Schema::create('job_boldsign_templates', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('job_id');
+            $table->foreignId('job_available_id')->constrained('job_availables')->cascadeOnDelete();
             $table->string('template_id');
             $table->timestamps();
 
-            $table->unique(['job_id', 'template_id'], 'job_boldsign_templates_job_template_uq');
-            $table->index('job_id', 'job_boldsign_templates_job_idx');
+            $table->unique(['job_available_id', 'template_id'], 'job_boldsign_templates_job_template_uq');
+            $table->index('job_available_id', 'job_boldsign_templates_job_idx');
             $table->index('template_id', 'job_boldsign_templates_template_idx');
         });
     }

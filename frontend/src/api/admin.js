@@ -329,3 +329,26 @@ export async function deleteJobAssignment(id) {
     const { data } = await http.delete(`/api/admin/job-assignments/${id}`)
     return data
 }
+
+export async function fetchBoldSignTemplates(params = {}) {
+    const { data } = await http.get('/api/admin/boldsign-templates', { params })
+    return data
+}
+
+export async function syncBoldSignTemplates(payload = {}) {
+    const { data } = await http.post('/api/admin/boldsign-templates/sync', payload)
+    return data
+}
+
+export async function fetchBoldSignTemplate(templateId) {
+    const { data } = await http.get(`/api/admin/boldsign-templates/${encodeURIComponent(templateId)}`)
+    return data
+}
+
+export async function saveBoldSignTemplateOverride(templateId, payload) {
+    const { data } = await http.put(
+        `/api/admin/boldsign-templates/${encodeURIComponent(templateId)}/override`,
+        payload,
+    )
+    return data
+}

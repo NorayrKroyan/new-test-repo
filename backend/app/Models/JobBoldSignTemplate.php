@@ -11,6 +11,11 @@ class JobBoldSignTemplate extends Model
 
     protected $guarded = [];
 
+    public function jobAvailable(): BelongsTo
+    {
+        return $this->belongsTo(JobAvailable::class, 'job_available_id');
+    }
+
     public function template(): BelongsTo
     {
         return $this->belongsTo(BoldSignTemplate::class, 'template_id', 'template_id');

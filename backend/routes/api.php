@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\Customer\AuthController as CustomerAuthController;
 use App\Http\Controllers\Api\GoogleAuthController;
 use App\Http\Controllers\Api\Webhooks\BoldSignWebhookController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\Admin\BoldSignTemplateController;
 
 Route::post('/webhooks/dialpad/sms', [DialpadSmsWebhookController::class, 'store']);
 Route::post('/webhooks/boldsign', [BoldSignWebhookController::class, 'store']);
@@ -86,6 +87,11 @@ Route::prefix('admin')->group(function () {
         Route::put('/job-assignments/{job_assignment}', [JobAssignmentController::class, 'update']);
         Route::delete('/job-assignments/{job_assignment}', [JobAssignmentController::class, 'destroy']);
         Route::post('/job-assignments/{job_assignment}/readiness-check', [JobAssignmentController::class, 'readinessCheck']);
+
+        Route::get('/boldsign-templates', [BoldSignTemplateController::class, 'index']);
+        Route::post('/boldsign-templates/sync', [BoldSignTemplateController::class, 'sync']);
+        Route::get('/boldsign-templates/{templateId}', [BoldSignTemplateController::class, 'show']);
+        Route::put('/boldsign-templates/{templateId}/override', [BoldSignTemplateController::class, 'saveOverride']);
     });
 });
 
