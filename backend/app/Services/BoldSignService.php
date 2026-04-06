@@ -2,8 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\BoldSignTemplate;
-use App\Models\BoldSignTemplateOverride;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
@@ -19,37 +17,94 @@ class BoldSignService
 
     public function templateOptions(): array
     {
-        $databaseOptions = $this->databaseTemplateOptions();
-        if (!empty($databaseOptions)) {
-            return $databaseOptions;
+        $localTemplates = $this->localTemplateDefinitions();
+
+        try {
+            $remoteTemplates = $this->listRemoteTemplates();
+        } catch (Throwable $e) {
+            if (!empty($localTemplates)) {
+                return collect($localTemplates)->map(function (array $template, string $key) {
+                    return [
+                        'key' => $key,
+                        'label' => $template['label'] ?? $key,
+                        'template_id' => $template['template_id'] ?? null,
+                        'template_name' => $template['label'] ?? $key,
+                        'has_mapping' => true,
+                    ];
+                })->values()->all();
+            }
+
+            throw new RuntimeException('BoldSign template list failed: ' . $e->getMessage(), previous: $e);
         }
 
-        return $this->fallbackTemplateOptions();
+        if (empty($remoteTemplates)) {
+            return collect($localTemplates)->map(function (array $template, string $key) {
+                return [
+                    'key' => $key,
+                    'label' => $template['label'] ?? $key,
+                    'template_id' => $template['template_id'] ?? null,
+                    'template_name' => $template['label'] ?? $key,
+                    'has_mapping' => true,
+                ];
+            })->values()->all();
+        }
+
+        $localByTemplateId = collect($localTemplates)
+            ->filter(fn (array $template) => filled($template['template_id'] ?? null))
+            ->map(function (array $template, string $key) {
+                $template['__key'] = $key;
+
+                return $template;
+            })
+            ->keyBy(fn (array $template) => (string) $template['template_id']);
+
+        $options = [];
+        $seenTemplateIds = [];
+
+        foreach ($remoteTemplates as $remoteTemplate) {
+            $templateId = (string) ($remoteTemplate['template_id'] ?? '');
+
+            if ($templateId === '') {
+                continue;
+            }
+
+            $localTemplate = $localByTemplateId->get($templateId);
+            $options[] = [
+                'key' => $localTemplate['__key'] ?? $templateId,
+                'label' => $remoteTemplate['label'],
+                'template_id' => $templateId,
+                'template_name' => $remoteTemplate['template_name'],
+                'has_mapping' => (bool) $localTemplate,
+            ];
+
+            $seenTemplateIds[$templateId] = true;
+        }
+
+        foreach ($localTemplates as $key => $template) {
+            $templateId = (string) ($template['template_id'] ?? '');
+
+            if ($templateId !== '' && isset($seenTemplateIds[$templateId])) {
+                continue;
+            }
+
+            $options[] = [
+                'key' => $key,
+                'label' => $template['label'] ?? $key,
+                'template_id' => $templateId !== '' ? $templateId : null,
+                'template_name' => $template['label'] ?? $key,
+                'has_mapping' => true,
+            ];
+        }
+
+        return $options;
     }
 
     public function resolveTemplateSelection(string $selection): array
     {
         $selection = trim($selection);
+
         if ($selection === '') {
             throw new RuntimeException('BoldSign template selection is required.');
-        }
-
-        $databaseTemplate = BoldSignTemplate::query()
-            ->with('override')
-            ->where('template_id', $selection)
-            ->first();
-
-        if ($databaseTemplate) {
-            if (!$this->isDatabaseTemplateEnabled($databaseTemplate)) {
-                throw new RuntimeException('The selected BoldSign template is disabled or inactive.');
-            }
-
-            return [
-                'key' => $databaseTemplate->template_id,
-                'template_id' => $databaseTemplate->template_id,
-                'template_name' => $databaseTemplate->template_name ?: $databaseTemplate->template_id,
-                'config' => $this->databaseTemplateConfig($databaseTemplate),
-            ];
         }
 
         $localTemplates = $this->localTemplateDefinitions();
@@ -65,12 +120,13 @@ class BoldSignService
             ];
         }
 
-        foreach ($this->fallbackTemplateOptions() as $option) {
+        foreach ($this->templateOptions() as $option) {
             if (
                 (string) ($option['key'] ?? '') === $selection ||
                 (string) ($option['template_id'] ?? '') === $selection
             ) {
                 $local = null;
+
                 foreach ($localTemplates as $key => $template) {
                     if ((string) ($template['template_id'] ?? '') === (string) ($option['template_id'] ?? '')) {
                         $local = $template;
@@ -98,7 +154,7 @@ class BoldSignService
 
     public function sendFromTemplate(array $payload): array
     {
-        $resolved = $this->resolveTemplateSelection((string) ($payload['template_key'] ?? $payload['template_id'] ?? ''));
+        $resolved = $this->resolveTemplateSelection((string) ($payload['template_key'] ?? ''));
         $templateId = (string) ($resolved['template_id'] ?? '');
 
         if ($templateId === '') {
@@ -107,13 +163,14 @@ class BoldSignService
 
         $templateProperties = $this->getTemplateProperties($templateId);
         $selectedRole = $this->resolveTemplateRole($templateProperties, $resolved['config'] ?? null);
-
         $allRoles = collect((array) ($templateProperties['roles'] ?? []));
+
         if ($allRoles->isEmpty()) {
             throw new RuntimeException('BoldSign template has no roles.');
         }
 
         $selectedOriginalIndex = (int) ($selectedRole['index'] ?? $selectedRole['roleIndex'] ?? 0);
+
         if ($selectedOriginalIndex <= 0) {
             throw new RuntimeException('BoldSign template role index could not be resolved.');
         }
@@ -207,13 +264,61 @@ class BoldSignService
     public function verifyWebhookSignature(?string $signatureHeader, string $rawBody): bool
     {
         $secret = (string) env('BOLDSIGN_WEBHOOK_SECRET', '');
-        if ($secret === '' || !$signatureHeader) {
+
+        if ($secret === '' || !filled($signatureHeader)) {
             return false;
         }
 
-        $expected = hash_hmac('sha256', $rawBody, $secret);
+        $parsed = $this->parseWebhookSignatureHeader($signatureHeader);
+        $timestamp = (string) ($parsed['t'][0] ?? '');
 
-        return hash_equals($expected, trim($signatureHeader));
+        if ($timestamp === '') {
+            return false;
+        }
+
+        $signatures = array_values(array_filter(array_merge(
+            $parsed['s0'] ?? [],
+            $parsed['s1'] ?? []
+        ), fn (?string $value) => filled($value)));
+
+        if ($signatures === []) {
+            return false;
+        }
+
+        $signedPayload = $timestamp . '.' . $rawBody;
+        $expected = hash_hmac('sha256', $signedPayload, $secret);
+
+        foreach ($signatures as $signature) {
+            if (hash_equals($expected, trim((string) $signature))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function parseWebhookSignatureHeader(string $signatureHeader): array
+    {
+        $parts = [];
+
+        foreach (explode(',', $signatureHeader) as $segment) {
+            $segment = trim($segment);
+
+            if ($segment === '' || !str_contains($segment, '=')) {
+                continue;
+            }
+
+            [$key, $value] = array_map('trim', explode('=', $segment, 2));
+
+            if ($key === '' || $value === '') {
+                continue;
+            }
+
+            $parts[$key] ??= [];
+            $parts[$key][] = $value;
+        }
+
+        return $parts;
     }
 
     protected function request(): PendingRequest
@@ -239,150 +344,6 @@ class BoldSignService
         return (array) config('boldsign_templates.templates', []);
     }
 
-    protected function databaseTemplateOptions(): array
-    {
-        $rows = BoldSignTemplate::query()
-            ->with('override')
-            ->orderByRaw('CASE WHEN is_active = 1 THEN 0 ELSE 1 END')
-            ->orderBy('template_name')
-            ->get();
-
-        if ($rows->isEmpty()) {
-            return [];
-        }
-
-        return $rows
-            ->filter(fn (BoldSignTemplate $template) => $this->isDatabaseTemplateEnabled($template))
-            ->map(function (BoldSignTemplate $template) {
-                return [
-                    'key' => $template->template_id,
-                    'label' => $template->template_name ?: $template->template_id,
-                    'template_id' => $template->template_id,
-                    'template_name' => $template->template_name ?: $template->template_id,
-                    'has_mapping' => true,
-                    'source' => 'db',
-                ];
-            })
-            ->values()
-            ->all();
-    }
-
-    protected function isDatabaseTemplateEnabled(BoldSignTemplate $template): bool
-    {
-        if (!$template->is_active) {
-            return false;
-        }
-
-        $override = $template->override;
-        if (!$override) {
-            return true;
-        }
-
-        return (bool) $override->is_enabled;
-    }
-
-    protected function databaseTemplateConfig(BoldSignTemplate $template): array
-    {
-        /** @var BoldSignTemplateOverride|null $override */
-        $override = $template->override;
-
-        return [
-            'signer_role' => filled($override?->preferred_signer_role)
-                ? trim((string) $override->preferred_signer_role)
-                : null,
-            'signer_role_index' => $override?->preferred_signer_role_index
-                ? (int) $override->preferred_signer_role_index
-                : null,
-            'field_map' => (array) ($override?->field_map_json ?? []),
-        ];
-    }
-
-    protected function fallbackTemplateOptions(): array
-    {
-        $localTemplates = $this->localTemplateDefinitions();
-
-        try {
-            $remoteTemplates = $this->listRemoteTemplates();
-        } catch (Throwable $e) {
-            if (!empty($localTemplates)) {
-                return collect($localTemplates)->map(function (array $template, string $key) {
-                    return [
-                        'key' => $key,
-                        'label' => $template['label'] ?? $key,
-                        'template_id' => $template['template_id'] ?? null,
-                        'template_name' => $template['label'] ?? $key,
-                        'has_mapping' => true,
-                        'source' => 'config',
-                    ];
-                })->values()->all();
-            }
-
-            throw new RuntimeException('BoldSign template list failed: ' . $e->getMessage(), previous: $e);
-        }
-
-        if (empty($remoteTemplates)) {
-            return collect($localTemplates)->map(function (array $template, string $key) {
-                return [
-                    'key' => $key,
-                    'label' => $template['label'] ?? $key,
-                    'template_id' => $template['template_id'] ?? null,
-                    'template_name' => $template['label'] ?? $key,
-                    'has_mapping' => true,
-                    'source' => 'config',
-                ];
-            })->values()->all();
-        }
-
-        $localByTemplateId = collect($localTemplates)
-            ->filter(fn (array $template) => filled($template['template_id'] ?? null))
-            ->map(function (array $template, string $key) {
-                $template['__key'] = $key;
-                return $template;
-            })
-            ->keyBy(fn (array $template) => (string) $template['template_id']);
-
-        $options = [];
-        $seenTemplateIds = [];
-
-        foreach ($remoteTemplates as $remoteTemplate) {
-            $templateId = (string) ($remoteTemplate['template_id'] ?? '');
-            if ($templateId === '') {
-                continue;
-            }
-
-            $localTemplate = $localByTemplateId->get($templateId);
-
-            $options[] = [
-                'key' => $localTemplate['__key'] ?? $templateId,
-                'label' => $remoteTemplate['label'],
-                'template_id' => $templateId,
-                'template_name' => $remoteTemplate['template_name'],
-                'has_mapping' => (bool) $localTemplate,
-                'source' => $localTemplate ? 'config' : 'remote',
-            ];
-
-            $seenTemplateIds[$templateId] = true;
-        }
-
-        foreach ($localTemplates as $key => $template) {
-            $templateId = (string) ($template['template_id'] ?? '');
-            if ($templateId !== '' && isset($seenTemplateIds[$templateId])) {
-                continue;
-            }
-
-            $options[] = [
-                'key' => $key,
-                'label' => $template['label'] ?? $key,
-                'template_id' => $templateId !== '' ? $templateId : null,
-                'template_name' => $template['label'] ?? $key,
-                'has_mapping' => true,
-                'source' => 'config',
-            ];
-        }
-
-        return $options;
-    }
-
     protected function listRemoteTemplates(): array
     {
         $templates = [];
@@ -399,8 +360,10 @@ class BoldSignService
                 ->json();
 
             $rows = (array) ($response['result'] ?? []);
+
             foreach ($rows as $row) {
                 $normalized = $this->normalizeTemplateRecord((array) $row);
+
                 if ($normalized) {
                     $templates[] = $normalized;
                 }
@@ -422,6 +385,7 @@ class BoldSignService
     protected function normalizeTemplateRecord(array $row): ?array
     {
         $templateId = trim((string) ($row['templateId'] ?? $row['documentId'] ?? $row['id'] ?? ''));
+
         if ($templateId === '') {
             return null;
         }
@@ -446,16 +410,17 @@ class BoldSignService
             ->json();
     }
 
-    protected function resolveTemplateRole(array $templateProperties, ?array $templateConfig): array
+    protected function resolveTemplateRole(array $templateProperties, ?array $localConfig): array
     {
         $roles = collect((array) ($templateProperties['roles'] ?? []));
+
         if ($roles->isEmpty()) {
             throw new RuntimeException('BoldSign template has no roles.');
         }
 
-        if (filled($templateConfig['signer_role_index'] ?? null)) {
-            $match = $roles->first(function (array $role) use ($templateConfig) {
-                return (int) ($role['index'] ?? $role['roleIndex'] ?? 0) === (int) $templateConfig['signer_role_index'];
+        if (filled($localConfig['signer_role_index'] ?? null)) {
+            $match = $roles->first(function (array $role) use ($localConfig) {
+                return (int) ($role['index'] ?? $role['roleIndex'] ?? 0) === (int) $localConfig['signer_role_index'];
             });
 
             if ($match) {
@@ -463,11 +428,11 @@ class BoldSignService
             }
         }
 
-        if (filled($templateConfig['signer_role'] ?? null)) {
-            $expectedRole = mb_strtolower(trim((string) $templateConfig['signer_role']));
-
+        if (filled($localConfig['signer_role'] ?? null)) {
+            $expectedRole = mb_strtolower(trim((string) $localConfig['signer_role']));
             $match = $roles->first(function (array $role) use ($expectedRole) {
                 $name = mb_strtolower(trim((string) ($role['name'] ?? $role['role'] ?? '')));
+
                 return $name !== '' && $name === $expectedRole;
             });
 
@@ -478,20 +443,23 @@ class BoldSignService
 
         if ($roles->count() > 1) {
             throw new RuntimeException(
-                'This BoldSign template has multiple roles. Add a template override with preferred_signer_role or preferred_signer_role_index.'
+                'This BoldSign template has multiple roles. Add signer_role or signer_role_index for template_id ' .
+                (($templateProperties['templateId'] ?? 'unknown')) .
+                ' in config/boldsign_templates.php.'
             );
         }
 
         return $roles->first();
     }
 
-    protected function buildExistingFormFields(array $leadData, ?array $templateConfig): array
+    protected function buildExistingFormFields(array $leadData, ?array $localConfig): array
     {
-        $fieldMap = (array) ($templateConfig['field_map'] ?? []);
+        $fieldMap = (array) ($localConfig['field_map'] ?? []);
         $fields = [];
 
         foreach ($fieldMap as $leadField => $boldSignFieldId) {
             $value = $leadData[$leadField] ?? null;
+
             if ($value === null || $value === '') {
                 continue;
             }
