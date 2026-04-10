@@ -176,7 +176,7 @@ class LeadController extends Controller
 
         $carrier = DB::transaction(function () use ($lead) {
             $carrier = Carrier::create([
-                'company_name' => null,
+                'company_name' => $lead->company_name,
                 'contact_name' => $lead->full_name,
                 'email' => $lead->email,
                 'phone' => $lead->phone,
@@ -650,10 +650,12 @@ HTML, 200)->header('Content-Type', 'text/html; charset=UTF-8');
             'lead_date_choice',
             'insurance_answer',
             'full_name',
+            'company_name',
             'email',
             'phone',
             'city',
             'state',
+            'truck_type',
             'carrier_class',
             'usdot',
             'truck_count',
@@ -676,10 +678,12 @@ HTML, 200)->header('Content-Type', 'text/html; charset=UTF-8');
             'lead_date_choice' => ['nullable', 'string', 'max:255'],
             'insurance_answer' => ['nullable', 'string', 'max:255'],
             'full_name' => ['nullable', 'string', 'max:255'],
+            'company_name' => ['nullable', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:50'],
             'city' => ['nullable', 'string', 'max:255'],
             'state' => ['nullable', 'string', 'max:255'],
+            'truck_type' => ['nullable', 'string', 'max:255'],
             'carrier_class' => ['nullable', 'string', 'max:255'],
             'usdot' => ['nullable', 'string', 'max:255'],
             'truck_count' => ['nullable', 'integer'],
@@ -767,8 +771,10 @@ HTML, 200)->header('Content-Type', 'text/html; charset=UTF-8');
             $sub->where('full_name', 'like', "%{$q}%")
                 ->orWhere('email', 'like', "%{$q}%")
                 ->orWhere('phone', 'like', "%{$q}%")
+                ->orWhere('company_name', 'like', "%{$q}%")
                 ->orWhere('city', 'like', "%{$q}%")
                 ->orWhere('state', 'like', "%{$q}%")
+                ->orWhere('truck_type', 'like', "%{$q}%")
                 ->orWhere('carrier_class', 'like', "%{$q}%")
                 ->orWhere('platform', 'like', "%{$q}%")
                 ->orWhere('ad_name', 'like', "%{$q}%")
@@ -1053,8 +1059,10 @@ HTML, 200)->header('Content-Type', 'text/html; charset=UTF-8');
             ['key' => 'full_name', 'label' => 'Full Name'],
             ['key' => 'email', 'label' => 'Email'],
             ['key' => 'phone', 'label' => 'Phone'],
+            ['key' => 'company_name', 'label' => 'Company Name'],
             ['key' => 'city', 'label' => 'City'],
             ['key' => 'state', 'label' => 'State'],
+            ['key' => 'truck_type', 'label' => 'Truck Type'],
             ['key' => 'carrier_class', 'label' => 'Carrier Class'],
             ['key' => 'usdot', 'label' => 'USDOT'],
             ['key' => 'truck_count', 'label' => 'Truck Count'],

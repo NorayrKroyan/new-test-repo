@@ -130,9 +130,12 @@
 
           <div class="mt-2 grid grid-cols-1 gap-1 text-sm leading-5 text-slate-700">
             <div class="break-all"><span class="font-medium">Email:</span> {{ row.email || '—' }}</div>
+            <div><span class="font-medium">Company Name:</span> {{ row.company_name || '—' }}</div>
             <div><span class="font-medium">Ad Name:</span> {{ row.ad_name || '—' }}</div>
             <div><span class="font-medium">Platform:</span> {{ row.platform || '—' }}</div>
             <div><span class="font-medium">City:</span> {{ row.city || '—' }}</div>
+            <div><span class="font-medium">State:</span> {{ row.state || '—' }}</div>
+            <div><span class="font-medium">Truck Type:</span> {{ row.truck_type || '—' }}</div>
             <div><span class="font-medium">Insurance:</span> {{ row.insurance_answer || '—' }}</div>
             <div><span class="font-medium">Stage:</span> {{ displayStageLabel(row) }}</div>
 
@@ -456,10 +459,12 @@ const form = reactive({
   lead_date_choice: '',
   insurance_answer: '',
   full_name: '',
+  company_name: '',
   email: '',
   phone: '',
   city: '',
   state: '',
+  truck_type: '',
   carrier_class: '',
   usdot: '',
   truck_count: '',
@@ -558,10 +563,12 @@ function resetForm() {
     lead_date_choice: '',
     insurance_answer: '',
     full_name: '',
+    company_name: '',
     email: '',
     phone: '',
     city: '',
     state: '',
+    truck_type: '',
     carrier_class: '',
     usdot: '',
     truck_count: '',
@@ -892,6 +899,19 @@ const columns = [
     },
   },
   {
+    title: 'Company Name',
+    data: 'company_name',
+    render: (data, type) => {
+      const value = displayValue(data)
+
+      if (type === 'sort' || type === 'type' || type === 'filter') {
+        return sortValue(value)
+      }
+
+      return esc(value)
+    },
+  },
+  {
     title: 'Ad Name',
     data: 'ad_name',
     render: (data, type) => {
@@ -920,6 +940,32 @@ const columns = [
   {
     title: 'City',
     data: 'city',
+    render: (data, type) => {
+      const value = displayValue(data)
+
+      if (type === 'sort' || type === 'type' || type === 'filter') {
+        return sortValue(value)
+      }
+
+      return esc(value)
+    },
+  },
+  {
+    title: 'State',
+    data: 'state',
+    render: (data, type) => {
+      const value = displayValue(data)
+
+      if (type === 'sort' || type === 'type' || type === 'filter') {
+        return sortValue(value)
+      }
+
+      return esc(value)
+    },
+  },
+  {
+    title: 'Truck Type',
+    data: 'truck_type',
     render: (data, type) => {
       const value = displayValue(data)
 
@@ -1053,10 +1099,12 @@ function buildLeadPayload() {
     lead_date_choice: form.lead_date_choice || '',
     insurance_answer: form.insurance_answer || '',
     full_name: form.full_name || '',
+    company_name: form.company_name || '',
     email: form.email || '',
     phone: form.phone || '',
     city: form.city || '',
     state: form.state || '',
+    truck_type: form.truck_type || '',
     carrier_class: form.carrier_class || '',
     usdot: form.usdot || '',
     truck_count: form.truck_count === '' ? null : form.truck_count,
@@ -1337,10 +1385,12 @@ function editRow(row) {
     lead_date_choice: row.lead_date_choice || '',
     insurance_answer: row.insurance_answer || '',
     full_name: row.full_name || '',
+    company_name: row.company_name || '',
     email: row.email || '',
     phone: row.phone || '',
     city: row.city || '',
     state: row.state || '',
+    truck_type: row.truck_type || '',
     carrier_class: row.carrier_class || '',
     usdot: row.usdot || '',
     truck_count: row.truck_count || '',

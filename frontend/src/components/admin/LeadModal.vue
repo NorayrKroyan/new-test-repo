@@ -96,6 +96,10 @@
               <input v-model="form.full_name" class="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs" />
             </ModalFieldRow>
 
+            <ModalFieldRow label="Company Name:" class="md:col-span-1">
+              <input v-model="form.company_name" class="w-full max-w-[360px] rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs" />
+            </ModalFieldRow>
+
             <ModalFieldRow label="Email:" class="md:col-span-1">
               <input v-model="form.email" class="w-full max-w-[360px] rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs" />
             </ModalFieldRow>
@@ -114,6 +118,10 @@
 
             <ModalFieldRow label="State:" class="md:col-span-1">
               <input v-model="form.state" class="w-full max-w-[140px] rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs" />
+            </ModalFieldRow>
+
+            <ModalFieldRow label="Truck Type:" class="md:col-span-1">
+              <input v-model="form.truck_type" class="w-full max-w-[220px] rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs" />
             </ModalFieldRow>
 
             <ModalFieldRow label="Carrier Class:" class="md:col-span-1">
