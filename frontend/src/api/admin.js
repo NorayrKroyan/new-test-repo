@@ -320,6 +320,11 @@ export async function fetchJobRoster(jobId, params = {}) {
     return data
 }
 
+export async function fetchJobRosterOptions(jobId, params = {}) {
+    const { data } = await http.get(`/api/admin/jobs-available/${jobId}/roster-options`, { params })
+    return data
+}
+
 export async function createJobAssignment(jobId, payload) {
     const { data } = await http.post(`/api/admin/jobs-available/${jobId}/roster`, payload)
     return data

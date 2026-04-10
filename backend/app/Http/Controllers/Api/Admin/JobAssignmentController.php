@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\JobAssignment;
 use App\Models\JobAvailable;
+use App\Models\Lead;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -30,10 +31,53 @@ class JobAssignmentController extends Controller
 
     public function options(Request $request, JobAvailable $jobs_available)
     {
+        $search = $this->normalizeText($request->input('q'));
+
+        $assignedLeadIds = JobAssignment::query()
+            ->where('job_available_id', $jobs_available->id)
+            ->whereNotNull('lead_id')
+            ->pluck('lead_id')
+            ->filter()
+            ->map(fn ($value) => (int) $value)
+            ->values();
+
+        $leadQuery = Lead::query()
+            ->with(['carrier:id,company_name,contact_name'])
+            ->orderByDesc('id');
+
+        if ($search) {
+            $leadQuery->where(function (Builder $query) use ($search) {
+                $query
+                    ->where('full_name', 'like', '%' . $search . '%')
+                    ->orWhere('email', 'like', '%' . $search . '%')
+                    ->orWhere('phone', 'like', '%' . $search . '%')
+                    ->orWhere('city', 'like', '%' . $search . '%')
+                    ->orWhere('state', 'like', '%' . $search . '%');
+            });
+        }
+
+        $limit = $search ? 100 : 60;
+
+        $leads = $leadQuery
+            ->limit($limit)
+            ->get(['id', 'full_name', 'email', 'phone', 'linked_carrier_id']);
+
+        if ($assignedLeadIds->isNotEmpty()) {
+            $assignedLeads = Lead::query()
+                ->with(['carrier:id,company_name,contact_name'])
+                ->whereIn('id', $assignedLeadIds->all())
+                ->get(['id', 'full_name', 'email', 'phone', 'linked_carrier_id']);
+
+            $leads = $assignedLeads->concat($leads)->unique('id')->values();
+        }
+
         return response()->json([
             'pocs' => [],
             'carriers' => [],
-            'leads' => [],
+            'leads' => $leads
+                ->map(fn (Lead $lead) => $this->presentLeadOption($lead))
+                ->values()
+                ->all(),
         ]);
     }
 
@@ -111,12 +155,16 @@ class JobAssignmentController extends Controller
     {
         $data = $request->validate([
             'slot_type' => ['required', 'in:primary,spare'],
+            'lead_id' => ['nullable', 'integer', 'exists:leads,id'],
             'carrier_name' => ['nullable', 'string', 'max:25'],
             'driver_name' => ['nullable', 'string', 'max:25'],
             'status' => ['nullable', 'in:open,ready,pending_paperwork,open_alternate'],
             'notes' => ['nullable', 'string'],
         ]);
 
+        $data['lead_id'] = isset($data['lead_id']) && (int) $data['lead_id'] > 0
+            ? (int) $data['lead_id']
+            : null;
         $data['carrier_name'] = $this->normalizeText($data['carrier_name'] ?? null);
         $data['driver_name'] = $this->normalizeText($data['driver_name'] ?? null);
         $data['status'] = $this->normalizeStatus(
@@ -125,31 +173,60 @@ class JobAssignmentController extends Controller
         );
         $data['notes'] = $this->normalizeText($data['notes'] ?? null);
 
+        $this->assertUniqueLeadWithinJob(
+            $jobAvailableId,
+            $data['lead_id'] ?? null,
+            $current?->id
+        );
+
         $this->assertUniqueDriverNameWithinJob(
             $jobAvailableId,
             $data['driver_name'] ?? null,
+            $data['lead_id'] ?? null,
             $current?->id
         );
 
         return $data;
     }
 
-    private function assertUniqueDriverNameWithinJob(?int $jobAvailableId, ?string $driverName, ?int $ignoreId = null): void
+    private function assertUniqueLeadWithinJob(?int $jobAvailableId, ?int $leadId, ?int $ignoreId = null): void
     {
-        $normalized = $this->normalizeDriverName($driverName);
+        if (!$jobAvailableId || !$leadId) {
+            return;
+        }
+
+        $duplicateExists = JobAssignment::query()
+            ->where('job_available_id', $jobAvailableId)
+            ->where('lead_id', $leadId)
+            ->when($ignoreId, function (Builder $query) use ($ignoreId) {
+                $query->whereKeyNot($ignoreId);
+            })
+            ->exists();
+
+        if ($duplicateExists) {
+            throw ValidationException::withMessages([
+                'lead_id' => ['This lead is already used in another roster row for this job.'],
+            ]);
+        }
+    }
+
+    private function assertUniqueDriverNameWithinJob(?int $jobAvailableId, ?string $driverName, ?int $leadId = null, ?int $ignoreId = null): void
+    {
+        $normalized = $this->normalizeDriverIdentity($driverName, $leadId);
 
         if (!$jobAvailableId || $normalized === '') {
             return;
         }
 
         $duplicateExists = JobAssignment::query()
+            ->with(['lead:id,full_name'])
             ->where('job_available_id', $jobAvailableId)
             ->when($ignoreId, function (Builder $query) use ($ignoreId) {
                 $query->whereKeyNot($ignoreId);
             })
-            ->get(['id', 'driver_name'])
+            ->get(['id', 'lead_id', 'driver_name'])
             ->contains(function (JobAssignment $row) use ($normalized) {
-                return $this->normalizeDriverName($row->driver_name) === $normalized;
+                return $this->normalizeDriverIdentity($row->driver_name, $row->lead_id, $row->lead?->full_name) === $normalized;
             });
 
         if ($duplicateExists) {
@@ -161,9 +238,11 @@ class JobAssignmentController extends Controller
 
     private function applyManualData(JobAssignment $row, array $data): void
     {
-        $row->source_type = 'manual';
+        $leadId = isset($data['lead_id']) ? (int) $data['lead_id'] : 0;
+
+        $row->source_type = $leadId > 0 ? 'lead' : 'manual';
         $row->carrier_id = null;
-        $row->lead_id = null;
+        $row->lead_id = $leadId > 0 ? $leadId : null;
         $row->internal_poc_user_id = null;
 
         $row->carrier_name = $data['carrier_name'];
@@ -187,6 +266,9 @@ class JobAssignmentController extends Controller
                     ->orderBy('slot_order')
                     ->orderBy('id');
             },
+            'assignments.carrier:id,company_name,contact_name',
+            'assignments.lead:id,full_name,email,phone,linked_carrier_id',
+            'assignments.lead.carrier:id,company_name,contact_name',
         ]);
 
         $assignments = $job->assignments instanceof Collection
@@ -233,6 +315,9 @@ class JobAssignmentController extends Controller
             'slot_order' => (int) $assignment->slot_order,
             'slot_number' => $slotNumber,
             'slot_label' => $slotType === 'spare' ? "On-Call {$slotNumber}" : "Position {$slotNumber}",
+            'source_type' => $assignment->source_type,
+            'lead_id' => $assignment->lead_id ? (int) $assignment->lead_id : null,
+            'lead_label' => $assignment->lead ? $this->presentLeadOptionLabel($assignment->lead) : null,
             'carrier_name' => $carrierName !== '' ? $carrierName : null,
             'driver_name' => $driverName !== '' ? $driverName : null,
             'status' => $status,
@@ -398,7 +483,9 @@ class JobAssignmentController extends Controller
         $assignment->carrier_name
             ?: $assignment->carrier?->company_name
             ?: $assignment->carrier?->contact_name
-                ?: ''
+                ?: $assignment->lead?->carrier?->company_name
+                    ?: $assignment->lead?->carrier?->contact_name
+                        ?: ''
         ));
     }
 
@@ -409,6 +496,62 @@ class JobAssignmentController extends Controller
             ?: $assignment->lead?->full_name
             ?: ''
         ));
+    }
+
+    private function normalizeDriverIdentity(?string $driverName, ?int $leadId = null, ?string $resolvedLeadName = null): string
+    {
+        $driverName = $this->normalizeDriverName($driverName);
+
+        if ($driverName !== '') {
+            return $driverName;
+        }
+
+        if (!$leadId) {
+            return '';
+        }
+
+        $leadName = $resolvedLeadName;
+
+        if ($leadName === null) {
+            $leadName = Lead::query()
+                ->whereKey($leadId)
+                ->value('full_name');
+        }
+
+        return $this->normalizeDriverName($leadName);
+    }
+
+    private function presentLeadOption(Lead $lead): array
+    {
+        return [
+            'id' => (int) $lead->id,
+            'full_name' => $lead->full_name,
+            'email' => $lead->email,
+            'phone' => $lead->phone,
+            'carrier_name' => $this->normalizeText(
+                $lead->carrier?->company_name
+                    ?: $lead->carrier?->contact_name
+                    ?: null
+            ),
+            'label' => $this->presentLeadOptionLabel($lead),
+        ];
+    }
+
+    private function presentLeadOptionLabel(Lead $lead): string
+    {
+        $parts = array_values(array_filter([
+            $this->normalizeText($lead->full_name),
+            $this->normalizeText($lead->phone),
+            $this->normalizeText($lead->email),
+        ]));
+
+        $label = implode(' | ', $parts);
+
+        if ($label !== '') {
+            return $label;
+        }
+
+        return 'Lead #' . $lead->id;
     }
 
     private function normalizeText(?string $value): ?string

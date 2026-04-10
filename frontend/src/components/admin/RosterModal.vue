@@ -130,6 +130,22 @@
                   <InlineFieldHelp text="Driver name entered by hand for this roster row. A driver name can be used only once per job roster." />
                 </div>
               </ModalFieldRow>
+
+              <ModalFieldRow label="Linked Lead:" class="sm:col-span-2">
+                <div class="field-inline w-full">
+                  <select v-model="form.lead_id" class="field-input" :disabled="leadOptionsLoading">
+                    <option :value="null">Manual row only</option>
+                    <option
+                        v-for="lead in leadOptions"
+                        :key="lead.id"
+                        :value="Number(lead.id)"
+                    >
+                      {{ lead.label }}
+                    </option>
+                  </select>
+                  <InlineFieldHelp text="Optional. When a lead is linked here, that lead's job-specific BoldSign template rules will be used from the Lead modal. Manual Carrier and Driver fields can still be used if needed." />
+                </div>
+              </ModalFieldRow>
             </div>
 
             <div
@@ -214,6 +230,7 @@ import {
   createJobAssignment,
   deleteJobAssignment,
   fetchJobRoster,
+  fetchJobRosterOptions,
   updateJobAssignment,
 } from '../../api/admin'
 
@@ -233,6 +250,8 @@ const savingRow = ref(false)
 const deletingRow = ref(false)
 const error = ref('')
 const rows = ref([])
+const leadOptions = ref([])
+const leadOptionsLoading = ref(false)
 const rowModalOpen = ref(false)
 const rowModalRef = ref(null)
 
@@ -262,6 +281,7 @@ const summary = ref({
 const form = reactive({
   id: null,
   slot_type: 'primary',
+  lead_id: null,
   carrier_name: '',
   driver_name: '',
   status: 'open',
@@ -355,7 +375,10 @@ watch(
       if (value && props.job?.id) {
         rowModalOpen.value = false
         resetForm()
-        await loadRoster()
+        await Promise.all([
+          loadRoster(),
+          loadRosterOptions(),
+        ])
         return
       }
 
@@ -612,6 +635,7 @@ function resetForm() {
   Object.assign(form, {
     id: null,
     slot_type: 'primary',
+    lead_id: null,
     carrier_name: '',
     driver_name: '',
     status: 'open',
@@ -650,10 +674,36 @@ async function loadRoster() {
   }
 }
 
+async function loadRosterOptions() {
+  if (!props.job?.id) {
+    leadOptions.value = []
+    return
+  }
+
+  leadOptionsLoading.value = true
+
+  try {
+    const response = await fetchJobRosterOptions(props.job.id)
+    leadOptions.value = Array.isArray(response?.leads) ? response.leads.map((lead) => ({
+      id: Number(lead?.id || 0),
+      full_name: lead?.full_name || '',
+      email: lead?.email || '',
+      phone: lead?.phone || '',
+      carrier_name: lead?.carrier_name || '',
+      label: lead?.label || `Lead #${lead?.id || ''}`,
+    })).filter((lead) => lead.id > 0) : []
+  } catch (_error) {
+    leadOptions.value = []
+  } finally {
+    leadOptionsLoading.value = false
+  }
+}
+
 function editRow(row) {
   Object.assign(form, {
     id: row.id,
     slot_type: row.slot_type || 'primary',
+    lead_id: row.lead_id ? Number(row.lead_id) : null,
     carrier_name: row.carrier_name || '',
     driver_name: row.driver_name || '',
     status: row.status || (row.slot_type === 'spare' ? 'open_alternate' : 'open'),
@@ -670,8 +720,26 @@ function normalizeDriverName(value) {
       .toLowerCase()
 }
 
+const selectedLeadOption = computed(() => {
+  const selectedId = Number(form.lead_id || 0)
+  if (!selectedId) {
+    return null
+  }
+
+  return leadOptions.value.find((lead) => Number(lead?.id || 0) === selectedId) || null
+})
+
+function currentDriverIdentity() {
+  const manual = normalizeDriverName(form.driver_name)
+  if (manual) {
+    return manual
+  }
+
+  return normalizeDriverName(selectedLeadOption.value?.full_name || '')
+}
+
 function duplicateDriverRow() {
-  const normalized = normalizeDriverName(form.driver_name)
+  const normalized = currentDriverIdentity()
 
   if (!normalized) {
     return null
@@ -683,6 +751,22 @@ function duplicateDriverRow() {
     }
 
     return normalizeDriverName(row?.driver_name) === normalized
+  }) || null
+}
+
+function duplicateLeadRow() {
+  const selectedId = Number(form.lead_id || 0)
+
+  if (!selectedId) {
+    return null
+  }
+
+  return rows.value.find((row) => {
+    if (Number(row?.id || 0) === Number(form.id || 0)) {
+      return false
+    }
+
+    return Number(row?.lead_id || 0) === selectedId
   }) || null
 }
 
@@ -702,6 +786,13 @@ function extractErrorMessage(errorLike) {
 }
 
 async function saveForm() {
+  const duplicateLead = duplicateLeadRow()
+  if (duplicateLead) {
+    const slot = duplicateLead?.slot_label || duplicateLead?.slot_type || 'another row'
+    error.value = `This lead is already used in ${slot}.`
+    return
+  }
+
   const duplicate = duplicateDriverRow()
   if (duplicate) {
     const slot = duplicate?.slot_label || duplicate?.slot_type || 'another row'
@@ -715,6 +806,7 @@ async function saveForm() {
   try {
     const payload = {
       slot_type: form.slot_type,
+      lead_id: form.lead_id ? Number(form.lead_id) : null,
       carrier_name: form.carrier_name,
       driver_name: form.driver_name,
       status: form.status,
@@ -727,6 +819,7 @@ async function saveForm() {
     }
 
     await loadRoster()
+    await loadRosterOptions()
     emit('updated')
     closeRowEditor()
   } catch (e) {
@@ -747,6 +840,7 @@ async function deleteCurrentRow() {
   try {
     await deleteJobAssignment(form.id)
     await loadRoster()
+    await loadRosterOptions()
     emit('updated')
     closeRowEditor()
   } catch (e) {
